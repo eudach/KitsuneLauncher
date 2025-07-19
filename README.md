@@ -9,9 +9,9 @@
 ## 🎯 Características
 
 - Interfaz moderna y personalizable
-- Soporte para cuentas no premium
+- Soporte para cuentas no premium (próximamente premium)
 - Selector de versión
-- Múltiples idiomas
+- idiomas: english y español
 - Compatible con servidores alternativos
 - En camino: soporte de skins y más
 
@@ -23,7 +23,7 @@
 
 | Consola | Configuración | Perfil |
 |-------|---------------|---------------------|
-| ![console](https://snipboard.io/U69BwR.jpg) | ![config](https://snipboard.io/LXw6N5.jpg) | ![perfil](https://snipboard.io/McstKu.jpg) |
+| ![console](https://snipboard.io/U69BwR.jpg) | ![config](![alt text](image.png)) | ![perfil](https://snipboard.io/McstKu.jpg) |
 
 ---
 
@@ -56,6 +56,7 @@ Para ejecutar Kitsune Launcher necesitas:
 | Proyecto | Enlace |
 |----------|--------|
 | 🎨 Flet | [🔗 GitHub - Flet](https://github.com/flet-dev/flet) |
+| 💻 Flet-contrib | [🔗 GitHub - Flet-contrib](https://github.com/flet-dev/flet-contrib) |
 | 🔀 Flet-route | [🔗 GitHub - Flet-route](https://github.com/saurabhwadekar/flet_route) |
 | 🧱 minecraft_launcher_lib | [🔗 GitHub - minecraft_launcher_lib](https://github.com/JakobDev/minecraft-launcher-lib) |
 

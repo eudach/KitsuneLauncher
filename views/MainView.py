@@ -1,8 +1,8 @@
 import threading
 import flet as ft
 from flet_route import Params,Basket
-from Tools import alerta, MiniColorPicker
-from discordrp import Presence
+from flet_contrib.color_picker import ColorPicker
+from Tools import generar_degradado, alerta
 
 async def MainView(page:ft.Page, params:Params, basket:Basket):
     
@@ -85,7 +85,7 @@ async def MainView(page:ft.Page, params:Params, basket:Basket):
         
         #COLOR PICKER
         if page.launcher.config.get("primary_color_schema") != color_picker.color:
-            degrados = color_picker.generar_degradado()
+            degrados = generar_degradado(color_picker.color)
             
             page.launcher.config.set("primary_color_schema", color_picker.color)
             page.launcher.config.set("light_color_schema", degrados[1])
@@ -335,22 +335,17 @@ async def MainView(page:ft.Page, params:Params, basket:Basket):
                                 ft.Column(controls=
                                     [
                                     ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=java_path, margin=0),
-                                    ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, padding=5, content=
-                                        ft.Text(
-                                            selectable=True,
-                                            text_align=ft.TextAlign.CENTER,
-                                            value=f"{page.t('java_recommended')}\n",
-                                            spans=[
-                                                ft.TextSpan(
-                                                    "Link Java",
-                                                    ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE, color=page.launcher.config.get("primary_color_schema")),
-                                                    url="https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html"
-                                                )
-                                            ]
+                                    ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=minecraft_path, margin=0),
+                                    ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=language_control, margin=0),
+                                    ft.Container(border=ft.border.all(2, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, padding=5, content=
+                                        ft.Column(
+                                            controls=[
+                                                ft.Text(page.t('ram_usage'), max_lines=2, size=page.ancho/70, text_align=ft.TextAlign.CENTER, font_family="liberation"),
+                                                ram_slider,
+                                                ram_text
+                                            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, 
                                         ), margin=0
                                     ),
-                                    ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=minecraft_path, margin=0),
-                                    ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=language_control, margin=0)
                                     ],
                                     col=4, 
                                     spacing=5,
@@ -368,33 +363,27 @@ async def MainView(page:ft.Page, params:Params, basket:Basket):
                                                     ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER
                                                 ), margin=0, alignment=ft.alignment.center
                                             ),
-                                        
-                                            ft.Container(border=ft.border.all(2, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, content=
-                                                ft.Column(
-                                                    controls=[
-                                                        ft.Text(page.t('ram_usage'), max_lines=2, size=page.ancho/70, text_align=ft.TextAlign.CENTER, font_family="liberation"),
-                                                        ram_slider,
-                                                        ram_text
-                                                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, height=page.ancho/10, width=page.ancho*0.28
-                                                ), margin=0
-                                            ),
-                                        ], col=4
+                                            ft.Container(border=ft.border.all(1, ft.Colors.BLACK), bgcolor=ft.Colors.WHITE10, padding=10, margin=0, content=ft.Column(
+                                                controls=[
+                                                    ft.Text(page.t('wallpaper_save'), max_lines=2, size=page.ancho/70, text_align=ft.TextAlign.CENTER, font_family="liberation"),
+                                                    ft.Row(controls=
+                                                        [
+                                                            wallpaper_widget,
+                                                            ft.IconButton(icon=ft.Icons.EDIT, on_click=bttn_img_wallpaper, bgcolor=ft.Colors.TRANSPARENT, icon_color=page.launcher.config.get("primary_color_schema"))
+                                                            ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
+                                                        ),
+                                                    ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                                                )
+                                            )
+                                        ], col=3, alignment=ft.MainAxisAlignment.START, horizontal_alignment=ft.CrossAxisAlignment.CENTER
                                 ),
                                 
                                 
-                                ft.Container(col=3, border=ft.border.all(1, ft.Colors.BLACK), padding=10, bgcolor=ft.Colors.WHITE10, content=
+                                ft.Container(col=4, border=ft.border.all(1, ft.Colors.BLACK), padding=10, bgcolor=ft.Colors.WHITE10, content=
                                     ft.Column(
                                         controls=[
                                             ft.Text(page.t('color_picker_text'), max_lines=2, size=page.ancho/70, text_align=ft.TextAlign.CENTER, font_family="liberation"),
                                             color_picker,
-                                            ft.Text(page.t('wallpaper_save'), max_lines=2, size=page.ancho/70, text_align=ft.TextAlign.CENTER, font_family="liberation"),
-                                            ft.Row(controls=
-                                                   [
-                                                    wallpaper_widget,
-                                                    ft.IconButton(icon=ft.Icons.EDIT, on_click=bttn_img_wallpaper, bgcolor=ft.Colors.TRANSPARENT, icon_color=page.launcher.config.get("primary_color_schema"))
-                                                    ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
-                                                ),
-                                            
                                         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER
                                     ), margin=0
                                 ),
@@ -573,7 +562,6 @@ async def MainView(page:ft.Page, params:Params, basket:Basket):
                 ft.Text("English")
             )
         ],
-        width=page.ancho*0.30,
         focused_color='white',
         border="underline",
         border_color=ft.Colors.TRANSPARENT,
@@ -631,7 +619,7 @@ async def MainView(page:ft.Page, params:Params, basket:Basket):
         color=page.launcher.config.get("primary_color_schema")
     )
 
-    color_picker = MiniColorPicker(color=page.launcher.config.get("primary_color_schema"), slider_width=page.ancho/8, width=page.ancho/4, height=page.alto/6)
+    color_picker = ColorPicker(color=page.launcher.config.get("primary_color_schema"))
     list_vers = ft.DropdownM2(
         col=4,
         label=page.t('versions_dropdown_label'),
