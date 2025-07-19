@@ -23,7 +23,7 @@
 
 | Consola | Configuración | Perfil |
 |-------|---------------|---------------------|
-| ![console](https://snipboard.io/U69BwR.jpg) | ![config](![alt text](image.png)) | ![perfil](https://snipboard.io/McstKu.jpg) |
+| ![console](https://snipboard.io/U69BwR.jpg) | ![config](https://snipboard.io/5871yb.jpg) | ![perfil](https://snipboard.io/McstKu.jpg) |
 
 ---
 
