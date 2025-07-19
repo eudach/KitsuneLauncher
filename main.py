@@ -1,15 +1,12 @@
 import flet as ft
 from flet_route import Routing,path
-from views.MainView import MainView
-from views.LoginView import LoginView
-from views.InstallationView import InstallationView
 from discordrp import Presence
 import time
-from Utils import get_java, minecraft_dir_exists
+from Tools import KitsuneLauncher
 
 async def Pagina(page: ft.Page):
-    page.presence = Presence("1111360118680993792")
     
+    page.presence = Presence("1394361962212626543")
     
     #WINDOWS CONFIG
     page.window.title_bar_buttons_hidden = True
@@ -19,28 +16,11 @@ async def Pagina(page: ft.Page):
     page.bgcolor = ft.Colors.TRANSPARENT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
-
-    #Client Storage
     
-    #CHECK .minecraft
-    page.wallpaper_launcher = await page.client_storage.get_async("wallpaper_launcher") if await page.client_storage.contains_key_async("wallpaper_launcher") else "bg.jpg"
-    page._minecraft = await page.client_storage.get_async("minecraft_path") if await page.client_storage.contains_key_async("minecraft_path") else ".minecraft"
-    if not await minecraft_dir_exists():
-        return await page.go("/installation")
+    page.launcher:KitsuneLauncher = KitsuneLauncher() # type: ignore
+    page.launcher.set_page(page)
     
-    page.discord_presence_allow = await page.client_storage.get_async("discord_presence_allow") if await page.client_storage.contains_key_async("discord_presence_allow") else True
-    page.jvw_args = await page.client_storage.get_async("jvw_args") if await page.client_storage.contains_key_async("jvw_args") else "-Xmx3G -Xms3G --enable-native-access=ALL-UNNAMED".split(" ")
-    page.java_path = await page.client_storage.get_async("java_path") if await page.client_storage.contains_key_async("java_path") else await get_java()
-    page.username = await page.client_storage.get_async("username") if await page.client_storage.contains_key_async("username") else None
-    page.premium_mode = await page.client_storage.get_async("premium_mode") if await page.client_storage.contains_key_async("premium_mode") else False
-    page.lenguage = await page.client_storage.get_async("lenguaje") if await page.client_storage.contains_key_async("lenguaje") else 1
-    page.photo_perfil_path = await page.client_storage.get_async("photo_perfil") if await page.client_storage.contains_key_async("photo_perfil") else "icon.png"
-    
-    page.ram_usage = await page.client_storage.get_async("ram_usage") if await page.client_storage.contains_key_async("ram_usage") else 2
-    page.select_version = await page.client_storage.get_async("select_version") if await page.client_storage.contains_key_async("select_version") else None
-    
-    page.times = int(time.time())
-    page.Text_Console = None
+    page.discord_times = int(time.time())
     page.progress_bar = None
     
     #Windows SIZE
@@ -55,67 +35,132 @@ async def Pagina(page: ft.Page):
     page.on_resize = on_resize
     
     #TRADUCTIONS
+    # TRADUCTIONS MULTI-LANGUAGE (modern structure)
     page.trad = {
-        "settings_saved":["Configuraciones guardadas", "Saved settings"],
-        "setting_saved_description":["Se han guardado las siguientes configuraciones", "The following settings have been saved"],
-        
-        "session_closed":["Se ha cerrado tu sesion", "Your session has been closed"],
-        "session_closed_description":["Has cerrado sesion como", "You have logged out as"],
-        "session_close":["Cerrar Sesión", "Log out"],
-        
-        "select_javaw":["Seleccione", "Select"],
-        "select_img_wallpaper":["Seleccione la imagen para cambiar el fondo de pantalla", "Select the Image to change the Wallpaper"],
-        "discord_rich":["Mostrar el launcher en Discord", "Display on discord launcher"],
-        "ram_usage":["Cambiar el uso de RAM en Minecraft", "Change usage RAM Minecraft"],
-        "wallpaper_save":["Cambiar la imagen de fondo del lanzador","Change Background image launcher"],
-        "save_":["Guardar", "Save"],
-        "restore_":["Restaurar", "Restore"],
-        "delete_all_":["Borrar Todo", "Delete All"],
-        "delete_all_confirmation_":["Borrar todos los datos almacenados", "Delete all stored data"],
-        "console_msg":["Esta es la consola", "This is the console"],
-        "invalid_version":["Versión no válida", "Invalid Version"],
-        "invalid_version_description":["es una versión válida", "it is an invalid version"],
-        "installation_needed":["Necesita instalación","Need Installation"],
-        "installation_sucess":["Instalando versión...", "Installing version..."],
-        "installation_sucess_description":["no se ha encontrado, se instalará", "not found, will be installed"],
-        
-        
-        "file_not_found":["No se encontró el archivo especificado", "The specified file was not found"],
-        "data_question_y": ["Si", "Yes"],
-        
-        "data_elimination": ["Eliminación de datos en curso", "Data deletion in progress"],
-        "data_elimination_sure": ["Estás seguro de eliminar todos los datos?", "Are you sure you want to delete all data?"],
-        
-        "user_state_discord_conect": ["Conectado", "Connected"],
-        "user_state_discord_disconect":["No conectado", "Not connected"],
-        "user_state_discord_mainpage":["Página de inicio", "Home page"],
-        "user_state_discord_playing":["Jugando Minecraft", "Playing Minecraft"],
-        
-        "error_name_dialg_title":["Error en el nombre de usuario", "Error in the username"],
-        "error_name_dialg_description":["El nombre de usuario proporcionado no es válido", "The username provided is not valid"],
-        "error_select_dialg_title":["Error tienes que elegir una version válida", "Error you have to choose a valid version"],
-        "error_select_dialg_description":["Elige una de las versiones mostradas en el apartado", "Choose one of the versions shown in the section"],
-        "button_login":["Iniciar Sesión", "Sign in"],
-        "name_user": ["Nombre de usuario", "Username"],
-        "name_user_hint": ["Escribe tu nombre de usuario", "Write your username"],
-        
-        "email_user": ["Correo", "Email"],
-        "email_user_hint": ["Escribe tu Correo", "Write your email"],
-        "java_recommended": ["Es recomendado usar Java 1.17 para versiones recientes", "It is recommended to use Java 1.17 for recent versions"],
-        
-        "pass_user": ["Contraseña", "Password"],
-        "pass_user_hint": ["Escribe tu Contraseña", "Write your password"],
-        "versions_dropdown_label": ["Elige la versión", "Select version"],
-        "versions_dropdown": ["Versiones", "Versions"],
-        "sections_main": ["Consola","Console"],
-        "sections_profile": ["Perfil","Profile"],
-        "sections_settings": ["Ajustes","Settings"],
-        "play_button": ["Jugar", "Play"],
-        
-        "lenguaje_dropdown": ["Idioma", "Language"],
-        "lenguaje_dropdown_description": ["Selecciona el idioma", "Select the language"],
-        "Resolution_perfil": ["Resolución recomendada de la imagen 256x256 or 512x512", "Recommended image resolution 256x256 or 512x512"]
+        "es": {
+            "need_restart": "Ciertas configuraciones realizadas necesitan de reinicio",
+            "color_picker_text": "Color del tema",
+            "version_not_installed": "No disponible",
+            "settings_saved": "Configuraciones guardadas",
+            "setting_saved_description": "Se han guardado las siguientes configuraciones",
+            "session_closed": "Se ha cerrado tu sesión",
+            "session_closed_description": "Has cerrado sesión como",
+            "session_close": "Cerrar Sesión",
+            "select_javaw": "Seleccionar",
+            "select_img_wallpaper": "Seleccionar la imagen para cambiar el fondo de pantalla",
+            "discord_rich": "Mostrar el launcher en Discord",
+            "ram_usage": "Cambiar el uso de RAM en Minecraft",
+            "wallpaper_save": "Cambiar la imagen de fondo del lanzador",
+            "save_": "Guardar",
+            "restore_": "Restaurar",
+            "delete_all_": "Borrar Todo",
+            "delete_all_confirmation_": "Borrar todos los datos almacenados",
+            "console_msg": "Esta es la consola",
+            "invalid_version": "Versión no válida",
+            "invalid_version_description": "es una versión válida",
+            "installation_needed": "Necesita instalación",
+            "installation_sucess": "Instalando versión...",
+            "installation_sucess_description": "no se ha encontrado, se instalará",
+            "file_not_found": "No se encontró el archivo especificado",
+            "data_question_y": "Si",
+            "data_elimination": "Eliminación de datos en curso",
+            "data_elimination_sure": "¿Estás seguro de eliminar todos los datos?",
+            "user_state_discord_conect": "Conectado",
+            "user_state_discord_disconect": "No conectado",
+            "user_state_discord_mainpage": "Página de inicio",
+            "user_state_discord_playing": "Jugando Minecraft",
+            "error_name_dialg_title": "Error en el nombre de usuario",
+            "error_name_dialg_description": "El nombre de usuario proporcionado no es válido",
+            "error_select_dialg_title": "Error tienes que elegir una versión válida",
+            "error_select_dialg_description": "Elige una de las versiones mostradas en el apartado",
+            "button_login": "Iniciar Sesión",
+            "name_user": "Nombre de usuario",
+            "name_user_hint": "Escribe tu nombre de usuario",
+            "email_user": "Correo",
+            "email_user_hint": "Escribe tu Correo",
+            "java_recommended": "Es recomendado usar Java 1.17 para versiones recientes",
+            "pass_user": "Contraseña",
+            "pass_user_hint": "Escribe tu Contraseña",
+            "versions_dropdown_label": "Elige la versión",
+            "versions_dropdown": "Versiones",
+            "sections_main": "Consola",
+            "sections_profile": "Perfil",
+            "sections_settings": "Ajustes",
+            "play_button": "Jugar",
+            "play_button_installing": "Instalando...",
+            "lenguaje_dropdown": "Idioma",
+            "lenguaje_dropdown_description": "Selecciona el idioma",
+            "Resolution_perfil": "Resolución recomendada de la imagen 256x256 o 512x512"
+        },
+        "en": {
+            "need_restart": "Certain settings made require a restart",
+            "color_picker_text": "Theme color",
+            "version_not_installed": "Not available",
+            "settings_saved": "Saved settings",
+            "setting_saved_description": "The following settings have been saved",
+            "session_closed": "Your session has been closed",
+            "session_closed_description": "You have logged out as",
+            "session_close": "Log out",
+            "select_javaw": "Select",
+            "select_img_wallpaper": "Select the Image to change the Wallpaper",
+            "discord_rich": "Display on discord launcher",
+            "ram_usage": "Change usage RAM Minecraft",
+            "wallpaper_save": "Change Background image launcher",
+            "save_": "Save",
+            "restore_": "Restore",
+            "delete_all_": "Delete All",
+            "delete_all_confirmation_": "Delete all stored data",
+            "console_msg": "This is the console",
+            "invalid_version": "Invalid Version",
+            "invalid_version_description": "it is an invalid version",
+            "installation_needed": "Need Installation",
+            "installation_sucess": "Installing version...",
+            "installation_sucess_description": "not found, will be installed",
+            "file_not_found": "The specified file was not found",
+            "data_question_y": "Yes",
+            "data_elimination": "Data deletion in progress",
+            "data_elimination_sure": "Are you sure you want to delete all data?",
+            "user_state_discord_conect": "Connected",
+            "user_state_discord_disconect": "Not connected",
+            "user_state_discord_mainpage": "Home page",
+            "user_state_discord_playing": "Playing Minecraft",
+            "error_name_dialg_title": "Error in the username",
+            "error_name_dialg_description": "The username provided is not valid",
+            "error_select_dialg_title": "Error you have to choose a valid version",
+            "error_select_dialg_description": "Choose one of the versions shown in the section",
+            "button_login": "Sign in",
+            "name_user": "Username",
+            "name_user_hint": "Write your username",
+            "email_user": "Email",
+            "email_user_hint": "Write your email",
+            "java_recommended": "It is recommended to use Java 1.17 for recent versions",
+            "pass_user": "Password",
+            "pass_user_hint": "Write your password",
+            "versions_dropdown_label": "Select version",
+            "versions_dropdown": "Versions",
+            "sections_main": "Console",
+            "sections_profile": "Profile",
+            "sections_settings": "Settings",
+            "play_button": "Play",
+            "play_button_installing": "Installing...",
+            "lenguaje_dropdown": "Language",
+            "lenguaje_dropdown_description": "Select the language",
+            "Resolution_perfil": "Recommended image resolution 256x256 or 512x512"
+        }
     }
+
+    # idioma desde storage
+    # función de traducción
+    page.t = lambda k: page.trad[page.launcher.config.get("language")].get(k, f"[{k}]")
+    page.Text_Console = ft.ListView(controls=
+        [
+            ft.Text(font_family="console", value=page.t('console_msg'), size=page.ancho/65, selectable=True, expand=True)
+        ],
+        spacing=5,
+        padding=3,
+        expand=True,
+        auto_scroll=True
+    )
     
     #FONTS
     page.fonts = {
@@ -127,11 +172,21 @@ async def Pagina(page: ft.Page):
     }
     
     #DISCORD RICH MAIN UPDATE
-    if page.discord_presence_allow:
+
+    if page.launcher.config.get("discord_presence"):
         page.presence.set({
-            "state": page.trad["user_state_discord_mainpage"][page.lenguage],
-            "details": f"{page.username} {page.trad["user_state_discord_conect"][page.lenguage]}" if page.username is not None else f"{page.trad["user_state_discord_disconect"][page.lenguage]}",
-            "timestamps": {"start": int(page.times)},
+            "state": page.t("user_state_discord_mainpage"),
+            "details": f"{page.launcher.config.get("username")} {page.t("user_state_discord_conect")}" if page.launcher.config.get("username") is not None else f"{page.t("user_state_discord_disconect")}",
+            "timestamps": {"start": int(page.discord_times)},
+            "assets": {
+                "large_image": "icon",
+            },
+            "buttons": [
+                {
+                    "label": "Info",
+                    "url": "https://github.com/eudach/KitsuneLauncher",
+                }
+            ],
         })
         
     
@@ -142,7 +197,11 @@ async def Pagina(page: ft.Page):
     async def minimi(e):
         page.window.minimized = not page.window.minimized
         page.update()
-        
+    
+    async def close_windows(e):
+        page.launcher.config.save()
+        page.window.close()
+    
     #WINDOWS APPBAR
     page.appbar_x = ft.Row(
         [
@@ -159,7 +218,7 @@ async def Pagina(page: ft.Page):
                     overlay_color=ft.Colors.BLACK12,
                     shape=ft.BeveledRectangleBorder(radius=5)
                 ),
-                icon=ft.Icons.MINIMIZE, 
+                icon=ft.Icons.MINIMIZE,
                 icon_color=ft.Colors.WHITE,
                 on_click=minimi,
                 scale=0.9
@@ -181,30 +240,25 @@ async def Pagina(page: ft.Page):
                 ),
                 icon=ft.Icons.CLOSE, 
                 icon_color=ft.Colors.WHITE, 
-                on_click=lambda _: page.window.close(),
+                on_click=close_windows,
                 scale=0.9
             )
         ]
     )
     
+    async def lazy_main_view(page, params, basket):
+        from views.MainView import MainView
+        # si MainView es async:
+        return await MainView(page=page, params=params, basket=basket)
+
+    async def lazy_login_view(page, params, basket):
+        from views.LoginView import LoginView
+        return await LoginView(page=page, params=params, basket=basket)
+
     #PAGES
     app_routes = [
-        path(
-            url="/",
-            clear=True,
-            view=MainView
-            ),
-        path(
-            url="/login",
-            clear=True,
-            view=LoginView
-            ),
-        path(
-            url="/installation",
-            clear=True,
-            view=InstallationView
-            )
-        #path(url="/next_view/:my_id", clear=False, view=MainView),
+        path(url="/", clear=True, view=lazy_main_view),
+        path(url="/login", clear=True, view=lazy_login_view)
     ]
 
     Routing(
@@ -216,7 +270,7 @@ async def Pagina(page: ft.Page):
     
     
     #MAIN
-    if page.username is None:
+    if page.launcher.config.get("username") is None:
         page.go("/login")
     else:
         page.go("/")
