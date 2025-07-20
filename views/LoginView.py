@@ -27,7 +27,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
             return
         
         basket.nombre = nombre
-        page.launcher.config.set("username", nombre)
+        page.launcher.set_username(nombre)
         page.launcher.config.save()
         page.go("/")
     

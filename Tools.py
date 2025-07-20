@@ -8,7 +8,6 @@ import minecraft_launcher_lib
 import subprocess
 from flet import AlertDialog, Text, Colors, BeveledRectangleBorder, alignment, Icons, Icon, TextAlign
 import uuid
-import pickle
 from pathlib import Path
 from typing import Any
 import colorsys
@@ -41,40 +40,55 @@ def alerta(titulo, descripcion, success:bool=False) -> AlertDialog:
     )
 
 class ConfigManager:
-    def __init__(self, path: str = "config.pickle", default_config: dict = None):
+    def __init__(self, path: str = "KitsuneLauncher/config.json", default_config: dict = None):
         self.config_path = Path(os.getenv('APPDATA')) / path
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+
         self.default_config = default_config or {
             "language": "es",
             "username": None,
             "java_path": default_java_path(),
             "photo_perfil": "icon.png",
-            "last_version_played": (None, None),
+            "last_version_played": [None, None],
             "ram": "3",
             "premium_mode": False,
             "discord_presence": True,
             "wallpaper_launcher": "bg.png",
             "jvm_args": ["-Xmx3G", "-Xms3G", "--enable-native-access=ALL-UNNAMED"],
-            "minecraft_path": Path(os.getenv('APPDATA')) / ".minecraft",
-            
+            "minecraft_path": str(Path(os.getenv('APPDATA')) / ".minecraft"),
+
             "primary_color_schema": "#ff8f00",
             "light_color_schema": "#f1b362",
             "dark_color_schema": "#c57813",
         }
+
         self.config = self.load()
-            
+
     def set_jvm_args(self):
-        self.config["jvm_args"] = [f"-Xmx{self.config['ram']}G", f"-Xms{self.config['ram']}G", "--enable-native-access=ALL-UNNAMED"]
-        
+        self.config["jvm_args"] = [
+            f"-Xmx{self.config['ram']}G",
+            f"-Xms{self.config['ram']}G",
+            "--enable-native-access=ALL-UNNAMED"
+        ]
+
     def load(self) -> dict:
         if self.config_path.exists():
-            with self.config_path.open("rb") as f:
-                return pickle.load(f)
-        
+            try:
+                with self.config_path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # Asegurarse de que todos los valores faltantes se agreguen
+                    for key, value in self.default_config.items():
+                        data.setdefault(key, value)
+                    return data
+            except Exception as e:
+                pass
+                #print(f"⚠️ Error al cargar la configuración, usando valores predeterminados: {e}")
         return self.default_config.copy()
 
     def save(self):
-        with self.config_path.open("wb") as f:
-            pickle.dump(self.config, f)
+        with self.config_path.open("w", encoding="utf-8") as f:
+            json.dump(self.config, f, indent=4)
+        
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.config.get(key, default)
@@ -83,12 +97,12 @@ class ConfigManager:
         self.config[key] = value
         if key == "ram":
             self.set_jvm_args()
-        print(f"🔧 Configuración actualizada: {key} = {value}")
+        #print(f"🔧 Configuración actualizada: {key} = {value}")
 
     def reset(self):
         """Restablece a la configuración predeterminada."""
         self.config = self.default_config.copy()
-        print("♻️ Configuración restablecida a valores predeterminados.")
+        #print("♻️ Configuración restablecida a valores predeterminados.")
         self.save()
 
 class KitsuneLauncher:
@@ -157,7 +171,6 @@ class KitsuneLauncher:
     def set_java(self, new_path, save: bool = True) -> bool:
         if Path(new_path).exists():
             if save:
-                print("e")
                 self.config.set("java_path", new_path)
                 self._java_path = new_path  # cache update
             return True
@@ -196,9 +209,10 @@ class KitsuneLauncher:
                     "selectedProfile": "default"
                     }, f, indent=4
                 )
-                print("✅ Archivo launcher_profiles.json creado.")
+                #print("✅ Archivo launcher_profiles.json creado.")
         else:
-            print("❕ Archivo launcher_profiles.json ya existe.")
+            pass
+            #print("❕ Archivo launcher_profiles.json ya existe.")
     
     def return_appdata(self) -> str:
         """
@@ -311,21 +325,26 @@ class KitsuneLauncher:
         minecraft_path = self.minecraft_path
         version = self.last_played_version[0]
         jvm_args = self.config.get("jvm_args")
-        page.launcher.config.save()
         self.init()
             
         def __ejecutar_minecraft(comando):
-            proceso = subprocess.Popen(
-                comando,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                cwd=minecraft_path
-            )
-            
-            print("Iniciando Minecraft...")
+            try:
+                if not Path(minecraft_path).exists():
+                    Path(minecraft_path).mkdir(parents=True, exist_ok=True)
+                proceso = subprocess.Popen(
+                    comando,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    cwd=minecraft_path
+                )
+            except Exception as e:
+                with open("error.log", "w", encoding="utf-8") as f:
+                    f.write(str(e))
+            #print("Iniciando Minecraft...")
+            self.mostrar_linea_en_consola("Iniciando Minecraft...")
             version_nombre = version
             version_details = ""
             if len(version.split("-"))>1:
@@ -338,12 +357,16 @@ class KitsuneLauncher:
                 "state": f"{page.t("user_state_discord_playing")} {version_nombre} {version_details}",
                 "details": f"{username} {page.t("user_state_discord_conect")}",
                 "timestamps": {"start": page.discord_times},
+                "buttons": [
+                        {
+                            "label": "Info",
+                            "url": "https://github.com/eudach/KitsuneLauncher",
+                        }
+                    ],
                 }
             )
 
             for linea in proceso.stdout:
-                if "ely" in linea:
-                    print(linea)
                 self.mostrar_linea_en_consola(linea.strip())
 
             proceso.wait()
@@ -352,6 +375,12 @@ class KitsuneLauncher:
                     "state": page.t("user_state_discord_mainpage"),
                     "details": f"{username} {page.t("user_state_discord_conect")}",
                     "timestamps": {"start": page.discord_times},
+                    "buttons": [
+                        {
+                            "label": "Info",
+                            "url": "https://github.com/eudach/KitsuneLauncher",
+                        }
+                    ],
                 }
             )
             
@@ -373,9 +402,10 @@ class KitsuneLauncher:
         minecraft_command = minecraft_launcher_lib.command.get_minecraft_command(version, minecraft_path, options)
         minecraft_command = self.__limpiar_comando(minecraft_command)
         minecraft_command += ['--accessToken', '0', '--userType', 'legacy']
-
+        self.mostrar_linea_en_consola("todo correcto")
         # Lanzar Minecraft en un hilo para capturar la salida sin bloquear la app
         threading.Thread(target=__ejecutar_minecraft, args=(minecraft_command,), daemon=True).start()
+        self.mostrar_linea_en_consola("yaaaaaaa")
 
 
 def rgb2hex(rgb):

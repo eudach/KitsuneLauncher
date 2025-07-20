@@ -82,3 +82,67 @@ Puedes abrir un `issue` o contactar directamente.
 Este proyecto es de **libre uso y distribución no comercial**.  
 Puedes estudiar, modificar y compartir el código con fines educativos o personales.
 
+## ❕ Cambios
+
+# 🦊 Kitsune Launcher - Versión 0.1.3
+
+## 📌 Cambios desde la versión 0.1.2
+
+---
+
+### 🔐 Cambio en el manejo de `USERNAME`
+
+- **Antes:**
+  ```python
+  page.launcher.config.set("username", nombre)
+  ```
+- **Ahora:**
+  ```python
+  page.launcher.set_username(nombre)
+  ```
+
+✔️ Se encapsuló el acceso al nombre de usuario para mejorar la organización del código.
+
+---
+
+### ✅ Solución al problema de ventana inmóvil (Windows)
+
+Anteriormente, el launcher no se podía mover al usar interfaz sin bordes. Ahora se soluciona agregando:
+
+```python
+page.window.frameless = True
+```
+
+✔️ Esto permite que el `WindowDragArea` funcione correctamente.
+
+---
+
+### ⚙️ Cambio en la configuración
+
+- **Formato anterior:** `config.pickle`
+- **Formato actual:** `config.json`
+
+- **Ruta anterior:**  
+  ```python
+  %APPDATA%\config.pickle
+  ```
+
+- **Ruta actual:**  
+  ```python
+  %APPDATA%\KitsuneLauncher\config.json
+  ```
+
+✔️ Se migró de `pickle` a `json` para mayor compatibilidad al empaquetar la aplicación.
+
+---
+
+### ✅ Resumen de mejoras
+
+- Código más limpio y mantenible.
+- Launcher ahora completamente funcional al ser empaquetado.
+- Preparado para futuras expansiones del sistema de configuración.
+
+---
+
+**Versión anterior:** `0.1.2`  
+**Versión actual:** `0.1.3`

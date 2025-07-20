@@ -9,8 +9,10 @@ async def Pagina(page: ft.Page):
     page.presence = Presence("1394361962212626543")
     
     #WINDOWS CONFIG
-    page.window.title_bar_buttons_hidden = True
     page.window.title_bar_hidden = True
+    page.window.frameless = True  # si usas esto, asegúrate que todo se maneja por WindowDragArea
+    page.window.title_bar_buttons_hidden = True
+    page.window.transparent = False  # opcional, si usas transparencia
     page.padding = 0
     page.window.icon = "icon.ico"
     page.bgcolor = ft.Colors.TRANSPARENT
@@ -204,46 +206,42 @@ async def Pagina(page: ft.Page):
     
     #WINDOWS APPBAR
     page.appbar_x = ft.Row(
-        [
+        controls=[
             ft.WindowDragArea(
-                ft.Row(controls=
-                    [
-                    ft.Container(content=ft.Image(src=page.window.icon, width=80, height=50, scale=1.1, opacity=0.8), margin=0, padding=0),
-                    ft.Text("Kitsune Launcher", font_family="Katana", size=page.ancho/30)
-                    ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
-                ), expand=True
+                content=ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.Image(src=page.window.icon, width=80, height=50, scale=1.1, opacity=0.8),
+                            margin=0,
+                            padding=0
+                        ),
+                        ft.Text("Kitsune Launcher", font_family="Katana", size=page.ancho / 30)
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER
+                ),
+                expand=True
             ),
             ft.IconButton(
-                style=ft.ButtonStyle(
-                    overlay_color=ft.Colors.BLACK12,
-                    shape=ft.BeveledRectangleBorder(radius=5)
-                ),
                 icon=ft.Icons.MINIMIZE,
                 icon_color=ft.Colors.WHITE,
                 on_click=minimi,
                 scale=0.9
             ),
             ft.IconButton(
-                style=ft.ButtonStyle(
-                    overlay_color=ft.Colors.BLACK12,
-                    shape=ft.BeveledRectangleBorder(radius=5)
-                ),
-                icon=ft.Icons.SQUARE_OUTLINED, 
+                icon=ft.Icons.SQUARE_OUTLINED,
                 icon_color=ft.Colors.WHITE,
                 on_click=maximi,
                 scale=0.9
             ),
             ft.IconButton(
-                style=ft.ButtonStyle(
-                    overlay_color=ft.Colors.BLACK12,
-                    shape=ft.BeveledRectangleBorder(radius=5)
-                ),
-                icon=ft.Icons.CLOSE, 
-                icon_color=ft.Colors.WHITE, 
+                icon=ft.Icons.CLOSE,
+                icon_color=ft.Colors.WHITE,
                 on_click=close_windows,
                 scale=0.9
             )
-        ]
+        ],
+        vertical_alignment=ft.CrossAxisAlignment.CENTER
     )
     
     async def lazy_main_view(page, params, basket):
