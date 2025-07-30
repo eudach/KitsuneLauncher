@@ -2,19 +2,23 @@ import flet as ft
 from flet_route import Routing,path
 from discordrp import Presence
 import time
-from Tools import KitsuneLauncher
+from Tools import KitsuneLauncher, TYPES_COLORS
 
 async def Pagina(page: ft.Page):
-    
+
     page.presence = Presence("1394361962212626543")
     
     #WINDOWS CONFIG
     page.window.title_bar_hidden = True
-    page.window.frameless = True  # si usas esto, asegúrate que todo se maneja por WindowDragArea
+    page.window.frameless = True 
     page.window.title_bar_buttons_hidden = True
-    page.window.transparent = False  # opcional, si usas transparencia
-    page.padding = 0
+    page.window.transparent = False  
+    page.window_min_width = 400
+    page.window_min_height = 300
+    page.window_resizable = True
     page.window.icon = "icon.ico"
+    
+    page.padding = 0
     page.bgcolor = ft.Colors.TRANSPARENT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -40,6 +44,9 @@ async def Pagina(page: ft.Page):
     # TRADUCTIONS MULTI-LANGUAGE (modern structure)
     page.trad = {
         "es": {
+            "java_path_": "Ubicación de Java",
+            "mc_path_": "Ubicación de Minecraft",
+            "opacity": "Opacidad general",
             "need_restart": "Ciertas configuraciones realizadas necesitan de reinicio",
             "color_picker_text": "Color del tema",
             "version_not_installed": "No disponible",
@@ -95,6 +102,9 @@ async def Pagina(page: ft.Page):
             "Resolution_perfil": "Resolución recomendada de la imagen 256x256 o 512x512"
         },
         "en": {
+            "java_path_": "Location of Java",
+            "mc_path_": "Location of Minecraft",
+            "opacity":"Overall opacity",
             "need_restart": "Certain settings made require a restart",
             "color_picker_text": "Theme color",
             "version_not_installed": "Not available",
@@ -156,13 +166,14 @@ async def Pagina(page: ft.Page):
     page.t = lambda k: page.trad[page.launcher.config.get("language")].get(k, f"[{k}]")
     page.Text_Console = ft.ListView(controls=
         [
-            ft.Text(font_family="console", value=page.t('console_msg'), size=page.ancho/65, selectable=True, expand=True)
+            ft.Text(font_family="console", value="", size=page.ancho/65, selectable=True, expand=True)
         ],
         spacing=5,
         padding=3,
         expand=True,
         auto_scroll=True
     )
+    page.color_init = page.launcher.config.get("primary_color_schema")
     
     #FONTS
     page.fonts = {
@@ -174,7 +185,6 @@ async def Pagina(page: ft.Page):
     }
     
     #DISCORD RICH MAIN UPDATE
-
     if page.launcher.config.get("discord_presence"):
         page.presence.set({
             "state": page.t("user_state_discord_mainpage"),
@@ -259,10 +269,11 @@ async def Pagina(page: ft.Page):
         path(url="/login", clear=True, view=lazy_login_view)
     ]
 
+
     Routing(
         page=page, 
         app_routes=app_routes,
-        appbar=ft.Container(content=page.appbar_x, bgcolor=ft.Colors.BLACK54, border_radius=5),
+        appbar=ft.Container(content=page.appbar_x, bgcolor=TYPES_COLORS[page.launcher.config.get("opacity")][1], border_radius=5),
         async_is=True
         )
     

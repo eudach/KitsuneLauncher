@@ -19,11 +19,11 @@
 
 ## 🖼️ Capturas de pantalla
 
-> Imagenes de la version 1.0.1.
+> Imagenes de la version 0.1.4
 
 | Consola | Configuración | Perfil |
 |-------|---------------|---------------------|
-| ![console](https://snipboard.io/U69BwR.jpg) | ![config](https://snipboard.io/5871yb.jpg) | ![perfil](https://snipboard.io/McstKu.jpg) |
+| ![console](https://snipboard.io/Pofiw8.jpg) | ![config](https://snipboard.io/9GIDtS.jpg) | ![perfil](https://snipboard.io/9wEOhA.jpg) |
 
 ---
 
@@ -31,7 +31,7 @@
 
 Para ejecutar Kitsune Launcher necesitas:
 
-- ✅ **Java JDK 24 (recomendado)** o al menos **JDK 17** instalado y agregado al PATH
+- ✅ **Java JDK 24 (recomendado)**
 - ✅ **Python 3.10+** instalado (mejora la experiencia en algunos entornos)
 - ✅ Archivos clásicos de Minecraft (assets, `.minecraft`, etc.)
 - ✅ Conexión a internet para descargar versiones
@@ -82,67 +82,14 @@ Puedes abrir un `issue` o contactar directamente.
 Este proyecto es de **libre uso y distribución no comercial**.  
 Puedes estudiar, modificar y compartir el código con fines educativos o personales.
 
-## ❕ Cambios
+## 🆕 Novedades en la versión 0.1.4
 
-# 🦊 Kitsune Launcher - Versión 0.1.3
-
-## 📌 Cambios desde la versión 0.1.2
-
----
-
-### 🔐 Cambio en el manejo de `USERNAME`
-
-- **Antes:**
-  ```python
-  page.launcher.config.set("username", nombre)
-  ```
-- **Ahora:**
-  ```python
-  page.launcher.set_username(nombre)
-  ```
-
-✔️ Se encapsuló el acceso al nombre de usuario para mejorar la organización del código.
+- 🌈 **Mejoras visuales** en los botones y secciones de ajustes.
+- 🌍 **Cambio de idioma y color de tema en tiempo real** (¡sin reiniciar!).
+- 🌫️ **Nuevo control de opacidad** para la interfaz del launcher.
+- 🛠️ **Corrección del bug que reiniciaba logros** de los mundos por UUID variable. Ahora se guarda el progreso correctamente por nombre.
+- 🧹 **Limpieza de código**: se eliminaron líneas innecesarias para mayor claridad.
+- ⚡ **Mejoras de rendimiento** en el arranque y navegación.
+- 🧪 ...y otras mejoras que deberías **probar tú mismo 😉**.
 
 ---
-
-### ✅ Solución al problema de ventana inmóvil (Windows)
-
-Anteriormente, el launcher no se podía mover al usar interfaz sin bordes. Ahora se soluciona agregando:
-
-```python
-page.window.frameless = True
-```
-
-✔️ Esto permite que el `WindowDragArea` funcione correctamente.
-
----
-
-### ⚙️ Cambio en la configuración
-
-- **Formato anterior:** `config.pickle`
-- **Formato actual:** `config.json`
-
-- **Ruta anterior:**  
-  ```python
-  %APPDATA%\config.pickle
-  ```
-
-- **Ruta actual:**  
-  ```python
-  %APPDATA%\KitsuneLauncher\config.json
-  ```
-
-✔️ Se migró de `pickle` a `json` para mayor compatibilidad al empaquetar la aplicación.
-
----
-
-### ✅ Resumen de mejoras
-
-- Código más limpio y mantenible.
-- Launcher ahora completamente funcional al ser empaquetado.
-- Preparado para futuras expansiones del sistema de configuración.
-
----
-
-**Versión anterior:** `0.1.2`  
-**Versión actual:** `0.1.3`

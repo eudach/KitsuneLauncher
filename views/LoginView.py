@@ -1,6 +1,8 @@
+
 import flet as ft
-from flet_route import Params,Basket
-from Tools import alerta, KitsuneLauncher
+from flet_route import Params, Basket
+from Tools import alerta, get_offline_uuid, TYPES_COLORS
+import re
 
 async def LoginView(page:ft.Page, params:Params, basket:Basket):
     
@@ -10,22 +12,25 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         
         if page.launcher.config.get("premium_mode"):
             page.open(
-                await alerta(
+                alerta(
                     titulo= "Error",
                     descripcion= "En desarrollo"
                     )
                 )
             return
         
-        if nombre is None or nombre == "":
+        if not re.fullmatch(r'[a-zA-Z0-9_]{3,16}', nombre):
             page.open(
-                await alerta(
+                alerta(
                     titulo= page.t("error_name_dialg_title"),
                     descripcion= page.t("error_name_dialg_description")
                     )
                 )
             return
         
+        uuidd = get_offline_uuid(nombre)
+        page.launcher.config.set("uuid", uuidd)
+
         basket.nombre = nombre
         page.launcher.set_username(nombre)
         page.launcher.config.save()
@@ -58,14 +63,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         page.update()
         
     async def enable_premium(e):
-        pass_user.visible = not pass_user.visible
-        page.premium_mode = pass_user.visible
-        page.launcher.config.set("premium_mode", page.premium_mode)
-        e.control.text = "Premium Mode" if e.control.text == "Normal Mode" else "Normal Mode"
-        
-        page.update(e.control, pass_user)
-        
-        
+        pass  
         
     img_control = ft.Image(
         filter_quality=ft.FilterQuality.MEDIUM,
@@ -108,10 +106,10 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         controls=[
             
             ft.Container(
-                blur=(2),
                 expand=True,
                 border_radius=5,
-                bgcolor=ft.Colors.BLACK54,
+                bgcolor=TYPES_COLORS[page.launcher.config.get("opacity")][2],
+                border=ft.border.all(1, page.launcher.config.get("primary_color_schema")),
                 alignment=ft.alignment.center,
                 content=
                     ft.Column(
@@ -134,21 +132,28 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
                             pass_user,
                             ft.OutlinedButton(
                                 
-                                content=ft.Text(value=page.t("button_login"), text_align=ft.TextAlign.CENTER, font_family="Katana", size=page.ancho/45),
-                                width=page.ancho*0.17,
-                                height=page.alto*0.06,
+                                content=ft.Text(value=page.t("button_login"), text_align=ft.TextAlign.CENTER, font_family="Katana", size=page.ancho/40),
+                                width=page.ancho*0.20,
+                                height=page.alto*0.08,
                                 style=ft.ButtonStyle(
                                     overlay_color=ft.Colors.WHITE10,
                                     color={
                                         ft.ControlState.DEFAULT: ft.Colors.WHITE,
-                                        ft.ControlState.HOVERED: ft.Colors.GREEN,
-                                        ft.ControlState.FOCUSED: ft.Colors.LIGHT_GREEN_ACCENT},
+                                        ft.ControlState.HOVERED: page.launcher.config.get("primary_color_schema"),
+                                        ft.ControlState.FOCUSED: page.launcher.config.get("light_color_schema")
+                                    },
+                                    shape={
+                                        ft.ControlState.HOVERED: ft.StadiumBorder(),
+                                        #ft.ControlState.FOCUSED: ft.Colors.BLUE,
+                                        ft.ControlState.DEFAULT: ft.RoundedRectangleBorder(10)
+                                    },
                                     bgcolor=ft.Colors.TRANSPARENT
                                     
                                     ),
                                 on_click=goto_MainView)
-                            
-                        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        ], 
+                        alignment=ft.MainAxisAlignment.CENTER, 
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER
                     )
             )
         ],
@@ -165,7 +170,8 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
             text="Normal Mode" if page.launcher.config.get("premium_mode") else "Premium Mode",
             bgcolor=ft.Colors.BLACK12, 
             width=130, scale=0.7, 
-            on_click=enable_premium
+            on_click=enable_premium,
+            disabled=True,
         ),
         
         floating_action_button_location=ft.FloatingActionButtonLocation.END_FLOAT

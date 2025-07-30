@@ -12,6 +12,19 @@ from pathlib import Path
 from typing import Any
 import colorsys
 
+def get_offline_uuid(username: str) -> str:
+    return str(uuid.uuid3(uuid.NAMESPACE_DNS, "OfflinePlayer:" + username))
+
+TYPES_COLORS = {
+    0 : ["transparent","transparent","transparent",],
+    1: ["black12", "black12", "black26"],
+    2: ["black12", "black26", "black38",],
+    3: ["black26", "black38", "black45"],
+    4: ["black38", "black45", "black54"],
+    5: ["black45", "black54", "black87"],
+    6: ["black54", "black87", "black87"],
+}
+
 def default_java_path():
     base = Path("C:/Program Files/Java")
     if not base.exists():
@@ -47,6 +60,7 @@ class ConfigManager:
         self.default_config = default_config or {
             "language": "es",
             "username": None,
+            "uuid": None,
             "java_path": default_java_path(),
             "photo_perfil": "icon.png",
             "last_version_played": [None, None],
@@ -60,6 +74,8 @@ class ConfigManager:
             "primary_color_schema": "#ff8f00",
             "light_color_schema": "#f1b362",
             "dark_color_schema": "#c57813",
+            
+            "opacity": 5
         }
 
         self.config = self.load()
@@ -209,10 +225,9 @@ class KitsuneLauncher:
                     "selectedProfile": "default"
                     }, f, indent=4
                 )
-                #print("✅ Archivo launcher_profiles.json creado.")
+                self.mostrar_linea_en_consola("✅ Archivo launcher_profiles.json creado.")
         else:
-            pass
-            #print("❕ Archivo launcher_profiles.json ya existe.")
+            self.mostrar_linea_en_consola("❕ Archivo launcher_profiles.json ya existe.")
     
     def return_appdata(self) -> str:
         """
@@ -225,6 +240,7 @@ class KitsuneLauncher:
         porcentaje = int(progreso * 100)
 
         self.page.progress_bar.value = progreso  # Flet espera un valor entre 0.0 y 1.0
+        self.page.window.progress_bar = progreso
         self.page.progress_bar.tooltip = ft.Tooltip(message=f"{porcentaje}%")
         self.page.progress_bar.update()
         
@@ -293,35 +309,49 @@ class KitsuneLauncher:
         threading.Thread(target=__run_installation, daemon=True).start()
     
     def mostrar_linea_en_consola(self, linea):
-        while len(self.page.Text_Console.controls) > 200:
-            self.page.Text_Console.controls.pop(0)
-            
+        controls = self.page.Text_Console.controls
+        # Solo recorta si se pasa el límite
+        exceso = len(controls) - 200
+        if exceso > 0:
+            del controls[:exceso]
+
         color = Colors.RED_300 if "ERROR" in linea.upper() else Colors.WHITE
-        
-        self.page.Text_Console.controls.append(
-            ft.Text(font_family="console", value=f'{linea}', size=self.page.ancho/65, selectable=True, expand=True, color=color)
+
+        controls.append(
+            ft.Text(
+                font_family="console",
+                value=linea,
+                size=self.page.ancho / 65,
+                selectable=True,
+                expand=True,
+                color=color
+            )
         )
-        try:
+
+        if self.page.Text_Console in self.page.controls:
             self.page.Text_Console.update()
-        except:
-            pass
         
     def __maximum(self, max_value, value):
         self.max_value[0] = value
         
     def __limpiar_comando(self, cmd: list) -> list:
-        filtros = [
+        filtros = {
             '-XstartOnFirstThread',
             '--demo',
             '--accessToken',
             'msa',
             '',
             '--userType'
-        ]
+        }
         return [x for x in cmd if x not in filtros]
+    
     
     def start_minecraft(self, page):
         username = self.username
+        uuid = self.config.get("uuid")
+        if uuid is None:
+            uuid = get_offline_uuid(username)
+            page.launcher.config.set("uuid", uuid)
         minecraft_path = self.minecraft_path
         version = self.last_played_version[0]
         jvm_args = self.config.get("jvm_args")
@@ -343,8 +373,7 @@ class KitsuneLauncher:
             except Exception as e:
                 with open("error.log", "w", encoding="utf-8") as f:
                     f.write(str(e))
-            #print("Iniciando Minecraft...")
-            self.mostrar_linea_en_consola("Iniciando Minecraft...")
+            
             version_nombre = version
             version_details = ""
             if len(version.split("-"))>1:
@@ -387,7 +416,7 @@ class KitsuneLauncher:
         # Preparar opciones
         options:minecraft_launcher_lib.types.MinecraftOptions = {
             'username': username,
-            'uuid': str(uuid.uuid4()),
+            'uuid': uuid,
             'demo': False,
             'token': '',
             "executablePath": self.java_path,
@@ -402,10 +431,10 @@ class KitsuneLauncher:
         minecraft_command = minecraft_launcher_lib.command.get_minecraft_command(version, minecraft_path, options)
         minecraft_command = self.__limpiar_comando(minecraft_command)
         minecraft_command += ['--accessToken', '0', '--userType', 'legacy']
-        self.mostrar_linea_en_consola("todo correcto")
+        
         # Lanzar Minecraft en un hilo para capturar la salida sin bloquear la app
         threading.Thread(target=__ejecutar_minecraft, args=(minecraft_command,), daemon=True).start()
-        self.mostrar_linea_en_consola("yaaaaaaa")
+        
 
 
 def rgb2hex(rgb):
