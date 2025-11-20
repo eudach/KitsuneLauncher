@@ -1,21 +1,21 @@
 import flet as ft
 
 
-class IconButtonSearchMod:
+class IconButtonFilterSearch:
     
-    def __init__(self, page, search_mods):
+    def __init__(self, page, on_click):
         self.page = page
         
-        self.iconbutton_search_mod = ft.IconButton(
-            icon=ft.Icons.SEARCH,
-            icon_color=page.color_init,
+        self.iconbutton_filter = ft.IconButton(
+            icon=ft.Icons.FILTER_ALT,
+            icon_color='white',
             padding=0,
             hover_color=ft.Colors.BLACK12,
-            on_click=search_mods
+            on_click=on_click
         )
         
     def get(self):
-        return self.iconbutton_search_mod
+        return self.iconbutton_filter
     
 class IconButtonWallpaper:
     
@@ -23,10 +23,10 @@ class IconButtonWallpaper:
         self.page = page
         
         self.iconbutton_wallpaper = ft.IconButton(
-            icon=ft.Icons.REPLAY,
+            icon=ft.Icons.EDIT,
             on_click=bttn_img_wallpaper,
             bgcolor=ft.Colors.TRANSPARENT,
-            icon_color=page.color_init
+            icon_color=page.global_vars["primary_color"]
         )
         
     def get(self):
@@ -39,7 +39,7 @@ class IconButtonJavaPath:
         
         self.iconbutton_java_path = ft.IconButton(
             icon=ft.Icons.FOLDER,
-            icon_color=page.color_init,
+            icon_color=page.global_vars["primary_color"],
             padding=0,
             hover_color=ft.Colors.BLACK12,
             on_click=bttn_select_java_bin
@@ -54,7 +54,7 @@ class IconButtonMcPath:
         self.page = page
         
         self.iconbutton_mc_path = ft.IconButton(icon=ft.Icons.FOLDER, 
-            icon_color=page.color_init, 
+            icon_color=page.global_vars["primary_color"], 
             padding=0, 
             hover_color=ft.Colors.BLACK12, 
             on_click=bttn_check_minecraft_path

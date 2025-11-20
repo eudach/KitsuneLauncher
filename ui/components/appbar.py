@@ -3,7 +3,12 @@ from core.utils import TYPES_COLORS
 
 class AppBarWindows:
     
+    def safe_drag(self, e):
+        if self.page.dragging_enabled and self.page.window is not None:
+            self.page.window.start_dragging()
+    
     def __init__(self, page, minimize, maximize, close_windows):
+        self.page = page
         self.appbar = ft.Container(
             height=50,
             content=ft.Row(
@@ -17,12 +22,16 @@ class AppBarWindows:
                                     margin=0,
                                     padding=0
                                 ),
-                                ft.Text("Kitsune Launcher", font_family="Katana", size=page.ancho / 40, text_align=ft.TextAlign.CENTER)
+                                ft.Image(
+                                    src="iconos/minecraft_title.png",  width=page.window.width/4,  height=page.window.height/2
+                                )
                             ],
                             alignment=ft.MainAxisAlignment.START,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=1
                         ),
-                        expand=True
+                        expand=True,
+                        on_pan_start=self.safe_drag
                     ),
                     ft.IconButton(
                         icon=ft.Icons.MINIMIZE,

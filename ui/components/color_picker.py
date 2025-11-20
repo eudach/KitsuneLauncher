@@ -161,20 +161,19 @@ class HueSlider(ft.GestureDetector):
             width=CIRCLE_SIZE,
             height=CIRCLE_SIZE,
             border_radius=CIRCLE_SIZE,
-            border=ft.border.all(width=2, color="white"),
+            border=ft.border.all(width=1, color="white"),
         )
         self.content.controls += [self.track, self.thumb]
 
 
 class ColorPicker(ft.Container):
-    def __init__(self, color="#000000", on_color_select=None, width=220, height=220, color_displayed=None,**kwargs):
+    def __init__(self, color="#000000", on_color_select=None, width=220, height=220, **kwargs):
         super().__init__(**kwargs)
         self.color = color
         self.current_color = color
         self._on_color_select = on_color_select
         self.color_display_ref = ft.Ref[ft.Container]()
         self.color_text_ref = ft.Ref[ft.Text]()
-        self.color_displayed = None
         self.hue_slider = HueSlider(
             on_change_hue=self.update_picker_color,
             hue=color_utils.hex_to_hsv(self.color)[0] / 360,
@@ -240,52 +239,63 @@ class ColorPicker(ft.Container):
         self.bgcolor = "transparent"
         self.width = self._width
         self.border_radius = 10
-        
+
         h, s, v = color_utils.hex_to_hsv(self.color)
-        x = s / 100 * self._width
+        x = (s / 100) * self._width
         y = (1 - v / 100) * self._height
 
-        # mover sin llamar a update()
         self.selector_circle.left = x - 10
         self.selector_circle.top = y - 10
         self.current_color = self.calculate_color(x, y)
-        self.color_displayed = self.current_color
         self.selector_circle.bgcolor = self.current_color
 
+    def set_color(self, color: str):
+        rgb = color_utils.hex_to_rgb(color)
+        h, s, v = color_utils.rgb_to_hsv(*rgb)
+
+        # mover el HueSlider
+        self.hue_slider.hue = h / 360
+        self.hue_slider.update()
+        
+        self.color = color_utils.rgb_to_hex(
+        color_utils.hsv_to_rgb(self.hue_slider.hue, 1.0, 1.0)
+        )
+        self.horizontal_gradient.gradient.colors = ["#ffffff", self.color]
+        self.horizontal_gradient.update()
+
+        # calcular posición exacta del selector
+        x = (s / 100) * self._width
+        y = (1 - v / 100) * self._height
+
+        self.set_selector(x, y)
+        self.current_color = color
+
     def set_selector(self, x, y):
-        x = max(0, min(x, self._width))
-        y = max(0, min(y, self._height))
-        self.selector_circle.left = x - 10
-        self.selector_circle.top = y - 10
+        self.selector_circle.left = x - self.selector_circle.width / 2
+        self.selector_circle.top = y - self.selector_circle.height / 2
         self.current_color = self.calculate_color(x, y)
-        self.color_displayed = self.current_color
+
         self.selector_circle.bgcolor = self.current_color
-        self.color_display_ref.current.bgcolor = self.current_color
-        self.color_text_ref.current.value = self.current_color
-        if self._on_color_select:
-            self._on_color_select({
-                "hex": self.current_color,
-                "rgb": color_utils.hex_to_rgb(self.current_color),
-                "hsl": color_utils.hex_to_hsl(self.current_color),
-            })
+
+        if self.color_display_ref.current and self.color_text_ref.current:
+            self.color_display_ref.current.bgcolor = self.current_color
+            self.color_text_ref.current.value = self.current_color
+            self.color_display_ref.current.update()
+            self.color_text_ref.current.update()
+
         self.update()
 
     def _get_xy(self, e):
-        # Compatibilidad: si existe .local_x en el evento, úsalo
-        if hasattr(e, "local_x"):
-            return e.local_x, e.local_y
-
-        # Si no hay data o viene vacío, devolvemos None
-        if not e.data or "," not in e.data:
-            return None, None
-
         try:
-            x, y = e.data.split(",")
-            if x.strip() == "" or y.strip() == "":
-                return None, None
-            return float(x), float(y)
-        except Exception:
+            if hasattr(e, "local_x"):
+                return float(e.local_x), float(e.local_y)
+
+            if e.data and "," in e.data:
+                x, y = e.data.split(",")
+                return float(x), float(y)
+        except:
             return None, None
+        return None, None
 
     def on_tap(self, e):
         x, y = self._get_xy(e)
@@ -297,47 +307,28 @@ class ColorPicker(ft.Container):
         if x is not None and y is not None:
             self.set_selector(x, y)
 
-
     def calculate_color(self, x, y):
-        h_ratio = x / self._width
-        start = color_utils.hex_to_rgb("#ffffff")
-        end = color_utils.hex_to_rgb(self.color)
-        horiz = color_utils.mix_colors(start, end, h_ratio)
-        v_ratio = y / self._height
-        black = color_utils.hex_to_rgb("#000000")
-        mixed = color_utils.mix_colors(horiz, black, v_ratio)
-        return color_utils.rgb_to_hex(mixed)
+        # Normalizar posiciones
+        s = max(0, min(1, x / self._width))
+        v = max(0, min(1, 1 - (y / self._height)))
+
+        # Tomar el hue actual
+        h = self.hue_slider.hue
+
+        # Convertir HSV → RGB → HEX
+        r, g, b = color_utils.hsv_to_rgb(h, s, v)
+        return color_utils.rgb_to_hex((r, g, b))
 
     def update_picker_color(self):
-        # 1) actualizar el color base del gradiente según el slider (h en 0..1)
-        h = self.hue_slider.hue
-        self.color = color_utils.rgb_to_hex(color_utils.hsv_to_rgb(h, 1.0, 1.0))
+        # color base para el gradiente
+        self.color = color_utils.rgb_to_hex(
+            color_utils.hsv_to_rgb(self.hue_slider.hue, 1.0, 1.0)
+        )
         self.horizontal_gradient.gradient.colors = ["#ffffff", self.color]
 
-        # 2) obtener la posición actual del circulito (centro)
-        #    si aún no tiene left/top, usamos el centro del área
-        try:
-            x = float(self.selector_circle.left) + self.selector_circle.width / 2
-            y = float(self.selector_circle.top) + self.selector_circle.height / 2
-        except Exception:
-            x = self._width / 2
-            y = self._height / 2
+        # mantener la posición actual del selector y recalcular el color final
+        x = float(self.selector_circle.left) + self.selector_circle.width / 2
+        y = float(self.selector_circle.top) + self.selector_circle.height / 2
+        self.set_selector(x, y)
 
-        # clamp por seguridad
-        x = max(0, min(x, self._width))
-        y = max(0, min(y, self._height))
 
-        # 3) recalcular el color seleccionado para esa posición con el nuevo gradiente
-        self.current_color = self.calculate_color(x, y)
-        
-        self.selector_circle.bgcolor = self.current_color
-
-        # 4) actualizar preview (cuadrado y texto)
-        if self.color_display_ref.current:
-            self.color_display_ref.current.bgcolor = self.current_color
-        if self.color_text_ref.current:
-            self.color_text_ref.current.value = self.current_color
-        
-        self.color_displayed = self.current_color
-
-        self.update()

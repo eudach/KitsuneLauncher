@@ -1,6 +1,51 @@
+import random
 from flet import AlertDialog, Text, Colors, BeveledRectangleBorder, alignment, Icons, Icon, TextAlign
 import flet as ft
 import colorsys
+import os
+import hashlib
+import asyncio
+
+def close_alert(e:ft.ControlEvent):
+    control = e.page.overlay[-1]
+    if type(control) == ft.AlertDialog:
+        e.page.close(control)
+        e.page.update()
+
+async def sha1_of_file_with_progress(path, on_progress=None, chunk_size=8192):
+    """
+    Calcula el SHA-1 de un archivo reportando progreso.
+
+    Args:
+        path (str): Ruta del archivo
+        on_progress (callable): Callback (progress: float) entre 0.0 y 1.0
+        chunk_size (int): Tamaño de cada bloque leído
+
+    Returns:
+        str: Hash SHA-1 en hexadecimal
+    """
+    file_size = os.path.getsize(path)
+    read_size = 0
+    hasher = hashlib.sha1()
+    if path.is_dir():
+        return None
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            hasher.update(chunk)
+            read_size += len(chunk)
+
+            # calcular progreso
+            progress = read_size / file_size
+
+            # reportar a la UI
+            if on_progress:
+                on_progress(progress)
+
+            # ceder el control al event loop (no bloquear la UI)
+            await asyncio.sleep(0)
+
+    return hasher.hexdigest()
+
 
 DEFAULT_SIDE = {
     ft.ControlState.DEFAULT: ft.BorderSide(0, color=ft.Colors.TRANSPARENT),
@@ -16,6 +61,15 @@ TYPES_COLORS = {
     5: ["black45", "black54", "black87"],
     6: ["black54", "black87", "black87"],
 }
+
+def return_appdata() -> str:
+    """
+    RETURNS APPDATA
+    """
+    return os.getenv('APPDATA')
+
+def random_hex_color():
+    return "#{:06x}".format(random.randint(0, 0xFFFFFF))
 
 def alerta(titulo, descripcion, success:bool=False) -> AlertDialog:
     """

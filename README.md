@@ -21,11 +21,11 @@
 
 ## 🖼️ Capturas de pantalla
 
-> Imagenes de la version 0.1.5
+> Imagenes de la version 0.1.6
 
 | Modrinth | Configuración | Perfil |
 |-------|---------------|---------------------|
-| ![modrinth](https://snipboard.io/l8PeHv.jpg) | ![config](https://snipboard.io/BA6kp8.jpg) | ![perfil](https://snipboard.io/RjN8cg.jpg) |
+| ![modrinth](https://snipboard.io/Orwi4n.jpg) | ![config](https://snipboard.io/EYLTxe.jpg) | ![perfil](https://snipboard.io/gcpy3Q.jpg) |
 
 ---
 
@@ -37,6 +37,16 @@ Para ejecutar Kitsune Launcher necesitas:
 - ✅ Conexión a internet para descargar versiones
 
 ---
+
+
+| Versión de Minecraft | Loader principales (Vanilla/Fabric/Forge/NeoForge) | Versión de Java recomendada |
+|-----------------------|----------------------------------------------------|------------------------------|
+| 1.0 – 1.16.5         | Vanilla, Forge, Fabric                             | **Java 8**                  |
+| 1.17 – 1.17.1        | Vanilla, Forge, Fabric                             | **Java 11**                 |
+| 1.18 – 1.20.1        | Vanilla, Forge, Fabric                             | **Java 17**                 |
+| 1.20.2 – 1.20.4      | Vanilla, Fabric, NeoForge                          | **Java 21**                 |
+| 1.20.5 – 1.21.x+     | Vanilla, Fabric, NeoForge                          | **Java 21** (o superior)    |
+
 
 ## ⚙️ Instrucciones de instalación
 
@@ -81,11 +91,15 @@ Puedes abrir un `issue` o contactar directamente.
 Este proyecto es de **libre uso y distribución no comercial**.  
 Puedes estudiar, modificar y compartir el código con fines educativos o personales.
 
-## 🆕 Novedades en la versión 0.1.5
+## 🆕 Novedades en la versión 0.1.6
 
-- 🖥️ **Se quitó la consola** de los selectores principales, para dar más comodidad y espacio.  
-- 🌐 **Nuevo apartado de Modrinth**: por ahora solo mods, pero pronto incluirá texturas, mapas y más. Es solo una vista previa y más adelante permitirá **descargar directamente**.  
-- 📜 **Reescritura completa del código base** para mayor legibilidad, comodidad y mantenimiento.  
-- 🎨 **Nuevo Color Picker propio**, reemplazando al antiguo de *flet_contrib*.  
-- 🚫 **Prevención de múltiples ejecuciones**: ahora no se puede iniciar Minecraft más de una vez por error.  
-- 📦 **Instalación mejorada de versiones** de Minecraft: ahora se muestra de forma más clara y organizada.  
+- 🎨 **Interfaz gráfica renovada**: ahora todo el diseño se ve más atractivo y moderno.  
+- 🌐 **Sección de Modrinth mejorada**: exploración y vista rediseñadas, con más contenido y una experiencia más completa.  
+- 🧩 **Código optimizado y mejor estructurado** para facilitar el mantenimiento y futuras mejoras.  
+- 🖱️ **Sistema de Stray añadido**: permite dejar el launcher en segundo plano sin necesidad de abrirlo y cerrarlo constantemente (recomendado).  
+- 🐞 **Corrección de varios bugs**: ahora se muestra el nombre de la ventana correctamente y se evita el cierre accidental desde la barra de tareas.  
+- 🎨 **Historial de colores de tema**: se guardan los últimos 6 colores seleccionados.  
+- ☕ **Panel de información de Java**: incluye detalles útiles junto con las últimas novedades.  
+- 🔔 **Botón de actualización automática**: aparece solo cuando hay una nueva versión del launcher disponible.  
+- 🧭 **Botones de navegación mejorados**: tanto en mods internos como en mods de Modrinth, ofreciendo mayor fluidez.  
+- 🚧 **Próximamente en Modrinth**: descarga directa de mods desde el launcher.  

@@ -4,6 +4,7 @@ from flet_route import Params, Basket
 
 from core.utils import alerta, TYPES_COLORS
 from core.launcher import get_offline_uuid, check_username
+from ui.resources.Fonts import BaseFonts
 
 async def LoginView(page:ft.Page, params:Params, basket:Basket):
     
@@ -35,6 +36,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         basket.nombre = nombre
         page.launcher.set_username(nombre)
         page.launcher.config.save()
+        page.presence.update()
         page.go("/")
     
     
@@ -71,13 +73,13 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         anti_alias=True,
         fit=ft.ImageFit.CONTAIN,
         src=page.launcher.config.get("photo_perfil"),
-        border_radius=(page.ancho*0.35)/2,
-        width=page.ancho*0.35, height=page.alto*0.35
+        border_radius=(page.window.width*0.35)/2,
+        width=page.window.width*0.35, height=page.window.height*0.35
     )
 
     name_user = ft.TextField(
         label=page.t("name_user"),
-        width=page.ancho*0.30,
+        width=page.window.width*0.30,
         border=ft.InputBorder.UNDERLINE,
         filled=True,
         hint_text=page.t("name_user_hint"),
@@ -91,7 +93,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         password=True,
         can_reveal_password=True,
         label=page.t("pass_user"),
-        width=page.ancho*0.30,
+        width=page.window.width*0.30,
         border=ft.InputBorder.UNDERLINE,
         filled=True,
         hint_text=page.t("pass_user_hint"),
@@ -126,7 +128,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
                                     padding=0,
                                     alignment=ft.alignment.center,
                                     clip_behavior=ft.ClipBehavior.HARD_EDGE,
-                                    width=page.ancho*0.35, height=page.alto*0.35,
+                                    width=page.window.width*0.35, height=page.window.height*0.35,
                                     bgcolor=ft.Colors.TRANSPARENT,
                                     border=ft.border.all(2, ft.Colors.TRANSPARENT),
                                     shape=ft.BoxShape.CIRCLE,
@@ -139,9 +141,9 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
                                 pass_user,
                                 ft.OutlinedButton(
                                     
-                                    content=ft.Text(value=page.t("button_login"), text_align=ft.TextAlign.CENTER, font_family="Katana", size=page.ancho/40),
-                                    width=page.ancho*0.20,
-                                    height=page.alto*0.08,
+                                    content=ft.Text(value=page.t("button_login"), text_align=ft.TextAlign.CENTER, font_family=BaseFonts.buttons, size=page.window.width/40),
+                                    width=page.window.width*0.25,
+                                    height=page.window.height*0.10,
                                     style=ft.ButtonStyle(
                                         overlay_color=ft.Colors.WHITE10,
                                         color={
@@ -150,7 +152,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
                                             ft.ControlState.FOCUSED: page.launcher.config.get("light_color_schema")
                                         },
                                         shape={
-                                            ft.ControlState.HOVERED: ft.StadiumBorder(),
+                                            ft.ControlState.HOVERED: ft.RoundedRectangleBorder(5),
                                             #ft.ControlState.FOCUSED: ft.Colors.BLUE,
                                             ft.ControlState.DEFAULT: ft.RoundedRectangleBorder(10)
                                         },
@@ -167,7 +169,7 @@ async def LoginView(page:ft.Page, params:Params, basket:Basket):
         ],
         decoration=ft.BoxDecoration(
             image=ft.DecorationImage( 
-                src=page.launcher.config.get("wallpaper_launcher", page.default_wallpaper), 
+                src=page.launcher.config.get("wallpaper_launcher", page.global_vars["default_wallpaper"]), 
                 fit=ft.ImageFit.FILL,
                 opacity= 0.8
                 ),

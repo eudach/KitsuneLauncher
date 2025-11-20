@@ -1,7 +1,9 @@
 
+import asyncio
 import re
-from core.settings import ConfigManager
+
 from pathlib import Path
+from typing import Any, List
 import flet as ft
 import subprocess
 import minecraft_launcher_lib
@@ -11,7 +13,15 @@ import json
 import os
 import time
 import uuid
+
+from ui.resources.Fonts import BaseFonts
+
+from core.settings import ConfigManager
 from core.utils import alerta
+
+from dataclasses import dataclass
+import base64
+import zipfile
 
 def check_username(username:str) -> bool:
     return re.fullmatch(r'[a-zA-Z0-9_]{3,16}', username)
@@ -19,23 +29,69 @@ def check_username(username:str) -> bool:
 def get_offline_uuid(username: str) -> str:
     return str(uuid.uuid3(uuid.NAMESPACE_DNS, "OfflinePlayer:" + username))
 
+@dataclass
+class ResourcePack:
+    name: str
+    path: Path
+    
+    def get_icon(self) -> str:
+        
+        ruta = self.path
+        try:
+            if ruta.is_dir():
+                pack_path = ruta / "pack.png"
+                if pack_path.exists():
+                    return base64.b64encode(pack_path.read_bytes()).decode("utf-8")
+
+            elif ruta.suffix == ".zip":
+                with zipfile.ZipFile(ruta) as zf:
+                    if "pack.png" in zf.namelist():
+                        return base64.b64encode(zf.read("pack.png")).decode("utf-8")
+
+        except Exception:
+            return None
+        
+        return None
+
+@dataclass
+class ShaderPack:
+    name: str
+    path: Path
+
+
+@dataclass
+class Mod:
+    name: str
+    path: Path
+
 class KitsuneLauncher:
-    def __init__(self):
-        self.config = ConfigManager()
+    def __init__(self, page):
+        self.page = page
+        self.config = ConfigManager(page)
         self._minecraft_path = None
         self._java_path = None
         self._username = None
         self._version = None
-        self.page = None  # Se conecta luego con .set_page()
-
-    def set_page(self, page):
-        self.page = page
+        
+    def open_minecraft_logs(self, type:str):
+        # arg type: latest.log [ latest.log or debug.log]
+        ruta = f"{self.minecraft_path}//logs//{type}"
+        try:
+            os.startfile(ruta)
+            return True
+        except Exception:
+            return False
 
     @property
     def minecraft_path(self):
         if self._minecraft_path is None:
             self._minecraft_path = self.config.get("minecraft_path")
         return self._minecraft_path
+    
+    def check_vanilla_ver(self):
+        #minecraft_launcher_lib.utils.is_vanilla_version(e[0])
+        
+        ...
 
     @property
     def java_path(self):
@@ -61,13 +117,20 @@ class KitsuneLauncher:
         Retorna una lista de versiones de Minecraft disponibles y/o instaladas.
         Cada tupla es: (version_id: str, instalada: bool)
         """
-        try:
-            disponibles = {
-                e['id']: False for e in utils.get_version_list()
-                if e['type'] == 'release'
-            }
-        except Exception:
-            disponibles = {}
+
+        disponibles = {
+            "1.7.10": False,
+            "1.8.9": False,
+            "1.12.2": False,
+            "1.16.5": False,
+            "1.19.2": False,
+            "1.20.1": False,
+            "1.21.1": False,
+            "1.21.5": False,
+            "1.21.8": False,
+            "1.21.9": False
+        }
+        
 
         instaladas = {
             e['id']: True for e in utils.get_installed_versions(self.minecraft_path)
@@ -104,8 +167,38 @@ class KitsuneLauncher:
     def get_list_mods(self) -> list:
         pathh = Path(self.minecraft_path) / "mods"
         if pathh.is_dir():
-            return [(entry.name, Path(entry.path)) 
+            return [
+                    Mod(
+                        name=entry.name,
+                        path=Path(entry)
+                    )
                     for entry in os.scandir(pathh) if ".jar" in entry.name]
+        else:
+            return []
+        
+    def get_list_resourcepacks(self) -> List[ResourcePack]:
+        pathh = Path(self.minecraft_path) / "resourcepacks"
+        if pathh.is_dir():
+            return [
+                ResourcePack(
+                    name=entry.name,
+                    path=Path(entry)
+                )
+                for entry in pathh.iterdir()
+            ]
+        else:
+            return []
+        
+    def get_list_shaderpacks(self) -> list:
+        pathh = Path(self.minecraft_path) / "shaderpacks"
+        if pathh.is_dir():
+            return [
+                ShaderPack(
+                    name=entry.name,
+                    path=Path(entry)
+                )
+                for entry in pathh.iterdir() if Path(entry).suffix != ".txt"
+            ]
         else:
             return []
     
@@ -117,15 +210,8 @@ class KitsuneLauncher:
             return True
         return False
     
-    def init(self):
-        launcher_mc_path = Path(self.minecraft_path)
-        
-        if not launcher_mc_path.is_dir():
-            launcher_mc_path.mkdir(parents=True, exist_ok=True)
-            self.mostrar_linea_en_consola(f"✅ .minecraft {self.page.t('mc_path_create')}")
-            
+    def check_launcher_profiles(self):
         launcher_file = Path(self.minecraft_path) / "launcher_profiles.json"
-        
         """
         CHECK IF LAUNCHER PROFILES FILE EXISTS
         """
@@ -138,12 +224,16 @@ class KitsuneLauncher:
                     }, f, indent=4
                 )
                 self.mostrar_linea_en_consola(f"✅ launcher_profiles.json {self.page.t('profile_path_created')}")
+            return True
     
-    def return_appdata(self) -> str:
-        """
-        RETURNS APPDATA
-        """
-        return os.getenv('APPDATA')
+    
+    def init(self):
+        self.check_launcher_profiles()
+        
+        installed = utils.get_installed_versions(self.minecraft_path)
+        if not any(v["id"] == self.last_played_version[0] for v in installed):
+            self.config.set("last_version_played", [None, None])
+            self._version = None
     
     def __actualizar_progress_bar(self, iteration, total):
         progreso = iteration / total
@@ -173,48 +263,59 @@ class KitsuneLauncher:
         self.page.progress_time_remain.update()
 
         self.__actualizar_progress_bar(value, self.max_value[0])
-    
-    def instalar_minecraft_en_hilo(self, page:ft.Page, version):
-        self.page = page
-        self.max_value = [0]
-        minecraft_path = self.minecraft_path
-        self.install_start_time = time.perf_counter()
-        done_event = threading.Event()
         
+    def __finalizar_instalacion(self, version):
+        page = self.page
+        page.global_vars["option_change_installed"].content.controls[0].src = "iconos/icono.png"
+        page.global_vars["option_change_installed"].update()
+
+        self.set_version((version, True))
+        
+        page.button_play.disabled = False
+        page.button_play.content.controls[1].content.value = page.t("play_button")
+        page.progress_time_remain.visible = False
+        page.progress_bar.visible = False
+        page.global_vars["installing_minecraft_version"] = False
+        page.update()
+
+    def instalar_minecraft_en_hilo(self, version):
+        page = self.page
+        minecraft_path = self.minecraft_path
+        
+        if not page.internet_check.connected:
+            page.open(alerta(titulo="Error", descripcion=page.t("error_installation")))
+            return
+        
+        self.max_value = [0]
+        self.install_start_time = time.perf_counter()
+
         callback = {
             "setStatus": self.mostrar_linea_en_consola,
             "setProgress": self.__set_progress,
             "setMax": lambda value: self.__maximum(self.max_value, value)
         }
-        
-        self.page.progress_bar.visible=True
-        self.page.progress_bar.update()
-        
-        def __run_installation():
+
+        page.progress_bar.visible = True
+        page.progress_bar.update()
+
+        async def _install_task():
             try:
-                minecraft_launcher_lib.install.install_minecraft_version(version, minecraft_path, callback)
-            except:
-                page.open(
-                    alerta(
-                        titulo="Error",
-                        descripcion=page.t("error_installation")
-                    )
+                # Ejecuta la función bloqueante en un thread separado
+                await asyncio.to_thread(
+                    minecraft_launcher_lib.install.install_minecraft_version,
+                    version, minecraft_path, callback
                 )
+                page.global_vars["installing_minecraft_version"] = True
+            except Exception as e:
+                # ESTO se ejecuta en el event loop principal: seguro para UI
+                page.open(alerta(titulo="Error", descripcion=page.t("error_installation")))
+                return
 
-            done_event.set()
-            if done_event:
-                page.option_change_installed.content.controls[0].src = "icono.png"
-                page.option_change_installed.update()
-                self.set_version((version, True))
-                self.page.button_play.disabled = False
-                self.page.button_play.content.content.controls[1].value = page.t("play_button")
-                self.page.progress_time_remain.visible = False
-                self.page.progress_bar.visible = False
-                self.page.button_play.update()
-                self.page.progress_time_remain.update()
-                self.page.progress_bar.update()
+            # Aquí también estamos en el event loop principal: actualizar UI es seguro
+            self.__finalizar_instalacion(version)
 
-        page.run_thread(__run_installation)
+        # Lanza la tarea en background (no bloquea la UI)
+        page.run_task(_install_task)
 
     def mostrar_linea_en_consola(self, linea):
         controls = self.page.Text_Console.controls
@@ -223,22 +324,17 @@ class KitsuneLauncher:
         if exceso > 0:
             del controls[:exceso]
 
-        color = ft.Colors.RED_300 if "ERROR" in linea.upper() else ft.Colors.WHITE
+        if "Sound engine started" in linea:
+            self.page.button_play.content.controls[1].content.value = self.page.t("play_button_started")
+            self.page.button_play.update()
+        if "error" in linea:
+            self.page.logger.print_console_warn(linea)
+        else:
+            self.page.logger.print_console_info(linea)
 
-        controls.append(
-            ft.Text(
-                font_family="console",
-                value=linea,
-                size=self.page.ancho / 65,
-                selectable=True,
-                expand=True,
-                color=color
-            )
-        )
-
-        if self.page.current_section is None:
+        if self.page.global_vars["current_section"] is None or self.page.global_vars["current_section"] != "console":
             return
-        if self.page.current_section == 'console':
+        if self.page.global_vars["current_section"] == 'console':
             self.page.Text_Console.update()
         
     def __maximum(self, max_value, value):
@@ -256,7 +352,8 @@ class KitsuneLauncher:
         return [x for x in cmd if x not in filtros]
     
     
-    def start_minecraft(self, page:ft.Page):
+    def start_minecraft(self):
+        page = self.page
         username = self.username
         uuid = self.config.get("uuid")
         if uuid is None:
@@ -267,7 +364,7 @@ class KitsuneLauncher:
         minecraft_path = self.minecraft_path
         version = self.last_played_version[0]
         jvm_args = self.config.get("jvm_args")
-            
+                    
         def __ejecutar_minecraft(comando):
             try:
                 flags = subprocess.CREATE_NO_WINDOW | subprocess.HIGH_PRIORITY_CLASS
@@ -278,29 +375,33 @@ class KitsuneLauncher:
                     text=True,
                     bufsize=1,
                     creationflags=flags,
-                    cwd=minecraft_path
+                    cwd=minecraft_path,
+                    encoding="utf-8",   # Fuerza UTF-8
+                    errors="replace"
                 )
             except Exception as e:
                 with open(f"{self.minecraft_path}/error.log", "w", encoding="utf-8") as f:
                     f.write(str(e))
             
+            page.temp_config_modrinth["minecraft_started"] = True
             page.presence.update()
-            page.button_play.content.content.controls[1].value = page.t("init_mc")
+            page.button_play.content.controls[1].content.value = page.t("init_mc")
             page.button_play.disabled = True
             page.button_play.update()
-            page.temp_config_modrinth["minecraft_started"] = True
+            
                 
             for linea in proceso.stdout:
                 self.mostrar_linea_en_consola(linea.strip())
 
             #MINECRAFT CLOSED
             proceso.wait()
-            page.presence.update()
-            page.button_play.bgcolor=page.color_init
-            page.button_play.content.content.controls[1].value = page.t("play_button")
-            page.button_play.disabled = False
             page.temp_config_modrinth["minecraft_started"] = False
+            page.presence.update()
+            page.button_play.bgcolor=page.global_vars["primary_color"]
+            page.button_play.content.controls[1].content.value = page.t("play_button")
+            page.button_play.disabled = False
             page.button_play.update()
+            
             
         # Preparar opciones
         options:minecraft_launcher_lib.types.MinecraftOptions = {

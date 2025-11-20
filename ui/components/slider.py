@@ -1,4 +1,5 @@
-import flet as ft 
+import flet as ft
+import psutil 
 from core.utils import TYPES_COLORS
 
 class SliderOpacity:
@@ -11,7 +12,7 @@ class SliderOpacity:
             label="{value}°",
             divisions=6,
             inactive_color=TYPES_COLORS[page.launcher.config.get("opacity")][0],
-            active_color=page.color_init
+            active_color=page.global_vars["primary_color"]
         )
     
     def get(self):
@@ -23,13 +24,13 @@ class SliderRam:
         self.slider_ram = ft.Slider(
             on_change=ram_change_function,
             min=2,
-            max=16,
+            max=round(psutil.virtual_memory().total / (1024 ** 3)),
             round=0,
             value=page.launcher.config.get("ram"),
             divisions=14,
             label="{value}GB",
             inactive_color=TYPES_COLORS[page.launcher.config.get("opacity")][0],
-            active_color=page.color_init
+            active_color=page.global_vars["primary_color"]
         )
     
     def get(self):
