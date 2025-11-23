@@ -3,25 +3,93 @@ import json
 import os
 from typing import Any
 from core.utils import random_hex_color, return_appdata
+import shutil
 
-def default_java_path():
-    """Intenta encontrar una instalación predeterminada de Java 17 en el sistema."""
-    if os.name == "darwin":  # macOS
-        base = Path("/Library/Java/JavaVirtualMachines/")
-    elif os.name == "nt":  # Windows
-        base = Path("C:/Program Files/Java/")
-    elif os.name == "posix":  # Linux
-        base = Path("/usr/lib/jvm/")
-    else:
+def find_java() -> str | None:
+    """Intenta localizar un ejecutable de Java de forma robusta.
+
+    Estrategia:
+    1. Variables de entorno (JAVA_HOME/JDK_HOME) con soporte para macOS "Contents/Home".
+    2. Búsqueda en rutas conocidas según el sistema operativo.
+    3. Detección rápida vía PATH (shutil.which).
+    4. Escaneo recursivo superficial (hasta 3 niveles) en rutas conocidas buscando bin/java*.
+    """
+
+    java_execs = ["java", "java.exe", "javaw.exe"]
+
+    def _candidate_from_home(home: str) -> str | None:
+        home_p = Path(home)
+        # Añadir variante macOS si el usuario exportó JAVA_HOME apuntando a la raíz del bundle
+        mac_variants = [home_p, home_p / "Contents" / "Home"] if "darwin" in os.sys.platform else [home_p]
+        for base in mac_variants:
+            bin_dir = base / "bin"
+            if not bin_dir.exists():
+                continue
+            for exe in java_execs:
+                exe_path = bin_dir / exe
+                if exe_path.exists():
+                    return str(exe_path)
         return None
 
+    # 1. Variables de entorno
+    for var in ("JAVA_HOME", "JDK_HOME"):
+        env_val = os.environ.get(var)
+        if env_val:
+            found = _candidate_from_home(env_val)
+            if found:
+                return found
 
-    
-    paths = sorted(base.glob("jdk-17*"))
-    for path in reversed(paths):  # Priorizar versiones más recientes
-        exe = path / "bin" / "javaw.exe"
-        if exe.exists():
-            return str(exe)
+    # 2. PATH rápida (si ya está accesible)
+    for exe in ("javaw.exe" if os.name == "nt" else "java", "java.exe", "javaw.exe"):
+        path_found = shutil.which(exe)
+        if path_found:
+            return path_found
+
+    # 3. Rutas conocidas según SO
+    search_roots: list[Path] = []
+    if os.name == "nt":
+        search_roots += [
+            Path("C:/Program Files/Java"),
+            Path("C:/Program Files (x86)/Java"),
+        ]
+    else:  # POSIX
+        if "darwin" in os.sys.platform:  # macOS
+            search_roots += [Path("/Library/Java/JavaVirtualMachines")]
+        else:  # Linux / otros Unix
+            search_roots += [
+                Path("/usr/lib/jvm"),
+                Path("/usr/java"),
+                Path("/opt/java"),
+            ]
+
+    patterns = ["jdk*", "zulu*", "temurin*", "openjdk*", "java*"]
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for pattern in patterns:
+            for candidate in sorted(root.glob(pattern)):
+                # Intentar variantes estándar y macOS
+                found = _candidate_from_home(str(candidate))
+                if found:
+                    return found
+
+    # 4. Escaneo recursivo superficial (hasta 3 niveles) buscando bin/java*
+    for root in search_roots:
+        if not root.exists():
+            continue
+        depth_limit = 3
+        try:
+            for path in root.rglob('bin'):
+                # limitar profundidad para evitar explorar demasiado
+                if len(path.relative_to(root).parts) > depth_limit:
+                    continue
+                for exe in java_execs:
+                    exe_path = path / exe
+                    if exe_path.exists():
+                        return str(exe_path)
+        except Exception:
+            pass
+
     return None
 
 class ConfigManager:
@@ -34,7 +102,7 @@ class ConfigManager:
         self.default_config = default_config or {
             "username": None,
             "uuid": None,
-            "java_path": default_java_path(),
+            "java_path": find_java(),
             "last_version_played": [None, None],
             "ram": "4",
             "premium_mode": False,

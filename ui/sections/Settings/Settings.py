@@ -100,14 +100,32 @@ class Settings:
     async def filepicker_select_bin_javaw(self, e:ft.FilePickerResultEvent):
         page = self.page
         try:
-            if e.files is None:
-                page.logger.debug("Selección de archivo Java cancelada")
+            from pathlib import Path
+            if e.files:
+                java_path = e.files[0].path
+            elif e.path:
+                candidate_dir = Path(e.path)
+                java_candidates = [candidate_dir / "bin" / "java", candidate_dir / "bin" / "java.exe"]
+                java_path = None
+                for cand in java_candidates:
+                    if cand.exists():
+                        java_path = str(cand)
+                        break
+                if java_path is None:
+                    java_path = e.path
+            else:
+                page.logger.debug("Selección de Java cancelada")
                 return
-            
-            java_path = e.files[0].path
+
             page.logger.info(f"Ruta de Java seleccionada: {java_path}")
             self.input_java_path.value = java_path
             self.input_java_path.update()
+            # Aplicar inmediatamente al launcher y config
+            if page.launcher.set_java(java_path):
+                page.logger.info("Java path establecido correctamente (pendiente de guardar definitivo si necesario).")
+            else:
+                page.logger.warning("La ruta seleccionada no contiene ejecutable Java válido.")
+            page.run_task(self.validate_java_path)
         except Exception as ex:
             page.logger.error(f"Error seleccionando archivo Java: {ex}")
         
@@ -152,10 +170,45 @@ class Settings:
         )
         
     async def bttn_select_java_bin(self, e):
-        self.filepicker_javaw.pick_files(
-            f"{self.page.t('select_javaw')} javaw.exe",
-            allowed_extensions=["exe"]
-        )
+        import sys
+        if sys.platform.startswith("win"):
+            self.filepicker_javaw.pick_files(
+                f"{self.page.t('select_javaw')} javaw.exe",
+                allowed_extensions=["exe"]
+            )
+        else:
+            self.filepicker_javaw.get_directory_path(
+                dialog_title=self.page.t('select_javaw') + " JAVA_HOME"
+            )
+
+    async def validate_java_path(self):
+        page = self.page
+        from pathlib import Path
+        import subprocess, sys, asyncio
+        from ui.components import toast
+        exe_path = self.input_java_path.value
+        if not exe_path:
+            return
+        p = Path(exe_path)
+        if p.is_dir():
+            pt = p / 'bin' / ('java.exe' if sys.platform.startswith('win') else 'java')
+            if pt.exists():
+                p = pt
+        if not p.exists():
+            page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('file_not_found'), font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=3)
+            return
+        try:
+            proc = await asyncio.to_thread(lambda: subprocess.run([str(p), '-version'], capture_output=True, text=True))
+            output = proc.stderr or proc.stdout
+            if proc.returncode == 0 and 'version' in output.lower():
+                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_found'), font_family=BaseFonts.texts), toast_type=toast.ToastType.SUCCESS), duration=3)
+                page.logger.info(f"Java válido detectado: {output.splitlines()[0]}")
+            else:
+                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_invalid'), font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=4)
+                page.logger.warning(f"Java inválido o error: {output}")
+        except Exception as ex:
+            page.toaster.show_toast(toast.Toast(content=ft.Text(value=f"Java error: {ex}", font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=4)
+            page.logger.error(f"Error validando Java: {ex}")
         
     async def load_last_colors(self, e):
         self.color_picker.set_color(e.control.bgcolor)
@@ -491,3 +544,5 @@ class Settings:
                 )
             )
         await asyncio.sleep(0)
+
+    # Live color change removed: theme updates apply on save only.

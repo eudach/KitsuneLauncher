@@ -11,7 +11,7 @@ from ui.components.button import (
     ButtonOpenLatestLog, ButtonOpenDebugLog)
 
 from ui.sections.Modrinth import Modrinth
-from ui.sections.Settings import Settings
+from ui.sections.Settings.Settings import Settings
 from ui.sections.Perfil import Perfil
 
 from ui.resources.Fonts import BaseFonts

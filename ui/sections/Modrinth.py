@@ -49,9 +49,25 @@ class Modrinth:
     async def go_mod_description(self, e):
         page = self.page
         datos = None
-        # ModrinthAPI no implementa context manager asíncrono; usar instancia directa
+        # Obtener detalles del proyecto usando la API actual
         modrinth = ModrinthAPI(page)
-        datos = await modrinth.get_mod_description(e.control.data)
+        info = await modrinth.get_project_details(e.control.data)
+        # Adaptar estructura esperada por la vista
+        body_images = []
+        try:
+            # Extraer posibles imágenes embebidas en el markdown del body
+            import re as _re
+            body_images = _re.findall(r"!\[[^\]]*\]\(([^)]+)\)", info.body or "")
+        except Exception:
+            body_images = []
+        datos = {
+            "icon_url": info.icon_url or "iconos/no_found_image.png",
+            "title": info.title or "",
+            "description": info.description or "",
+            "categories": info.categories or [],
+            "gallery": info.gallery or [],
+            "body_images": body_images,
+        }
             
         current_mod = page.temp_config_modrinth['list_mods_cache'].index(e.control.data)
         have_back_mod = True

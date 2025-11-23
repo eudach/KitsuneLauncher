@@ -146,10 +146,24 @@ class KitsuneLauncher:
         return Path(self.minecraft_path).exists() and utils.is_minecraft_installed(self.minecraft_path)
 
     def set_java(self, new_path, save: bool = True) -> bool:
-        if Path(new_path).exists():
+        from pathlib import Path
+        p = Path(new_path)
+        # If a directory is provided, try to locate a java executable inside common subpaths.
+        if p.is_dir():
+            candidates = [
+                p / "bin" / "java",
+                p / "bin" / "java.exe",
+                p / "Contents" / "Home" / "bin" / "java",  # macOS JDK bundle structure
+            ]
+            for c in candidates:
+                if c.exists():
+                    new_path = str(c)
+                    p = c
+                    break
+        if p.exists():
             if save:
-                self.config.set("java_path", new_path)
-                self._java_path = new_path  # cache update
+                self.config.set("java_path", str(p))
+                self._java_path = str(p)  # cache update
             return True
         return False
 

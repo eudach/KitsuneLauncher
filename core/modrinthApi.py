@@ -83,8 +83,14 @@ class ModrinthAPI:
         except (json.JSONDecodeError, aiohttp.ContentTypeError):
             return {}
 
+    async def _ensure_session(self):
+        """Garantiza que exista una sesión activa antes de realizar requests."""
+        if not self.session or self.session.closed:
+            await self.start()
+
     async def _make_request(self, url: str, **kwargs) -> Dict[str, Any]:
         try:
+            await self._ensure_session()
             async with self.session.get(url, **kwargs) as response:
                 return await self._handle_response(response)
         except (ClientError, asyncio.TimeoutError):

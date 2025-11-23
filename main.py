@@ -21,9 +21,9 @@ from ui.components.appbar import AppBarWindows
 # ---------------------------------------------------------------------------
 def configure_window(page: ft.Page) -> None:
     # Mostrar barra de título estándar para que se vea icono y nombre.
-    page.window.title_bar_hidden = False
+    page.window.title_bar_hidden = True
     page.title = "Kitsune Launcher"
-    page.window.frameless = False
+    page.window.frameless = True
     page.window.prevent_close = True
     page.window.title_bar_buttons_hidden = False
     page.window.transparent = False
