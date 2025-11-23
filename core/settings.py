@@ -2,12 +2,20 @@ from pathlib import Path
 import json
 import os
 from typing import Any
-from core.utils import random_hex_color
+from core.utils import random_hex_color, return_appdata
 
 def default_java_path():
-    base = Path("C:/Program Files/Java")
-    if not base.exists():
+    """Intenta encontrar una instalación predeterminada de Java 17 en el sistema."""
+    if os.name == "darwin":  # macOS
+        base = Path("/Library/Java/JavaVirtualMachines/")
+    elif os.name == "nt":  # Windows
+        base = Path("C:/Program Files/Java/")
+    elif os.name == "posix":  # Linux
+        base = Path("/usr/lib/jvm/")
+    else:
         return None
+
+
     
     paths = sorted(base.glob("jdk-17*"))
     for path in reversed(paths):  # Priorizar versiones más recientes
@@ -19,9 +27,9 @@ def default_java_path():
 class ConfigManager:
     def __init__(self, page, path: str = "KitsuneLauncher/config.json", default_config: dict = None):
         self.page = page
-        self.config_path = Path(os.getenv('APPDATA')) / path
+        self.config_path = Path(return_appdata()) / path
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        mc_path = str(self.check_minecraft_path(Path(os.getenv('APPDATA')) / ".minecraft"))
+        mc_path = str(self.check_minecraft_path(Path(return_appdata()) / ".minecraft"))
         
         self.default_config = default_config or {
             "username": None,

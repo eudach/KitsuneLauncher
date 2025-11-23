@@ -357,6 +357,13 @@ class Settings:
         page:ft.Page = self.page
         page.current_section = 'settings'
         page.content_menu.alignment= ft.alignment.top_left
+        # Fallbacks para atributos requeridos
+        if not hasattr(page, 'color_init'):
+            page.color_init = page.global_vars.get("primary_color") or page.launcher.config.get("primary_color_schema")
+        if not hasattr(page, 'ancho'):
+            page.ancho = page.window.width
+        if not hasattr(page, 'alto'):
+            page.alto = page.window.height
         
         self.text_save = ft.Text(
             value=page.t('save_'),
@@ -393,7 +400,7 @@ class Settings:
             inactive_thumb_color=page.launcher.config.get("light_color_schema")
         )
         self.image_wallpaper_widget = ft.Image(
-            src=page.launcher.config.get("wallpaper_launcher", page.default_wallpaper),
+            src=page.launcher.config.get("wallpaper_launcher", getattr(page, "default_wallpaper", page.global_vars.get("default_wallpaper", "imgs/wallpaper.png"))),
             width=page.ancho*0.10,
             height=page.alto*0.10,
             border_radius=10,
@@ -449,7 +456,8 @@ class Settings:
             on_click=self.show_list_wallpaper
         )
         
-        page.content_menu.content= ft.Column(
+        try:
+            page.content_menu.content= ft.Column(
             controls=[
                 
                 ft.Container(expand=9, padding=5, content=
@@ -537,3 +545,19 @@ class Settings:
                     )
             ],
         )
+        except Exception as ex:
+            # Mostrar error en la UI para evitar quedarse en loading
+            page.content_menu.content = ft.Container(
+                bgcolor=ft.Colors.RED_900,
+                padding=20,
+                border_radius=10,
+                content=ft.Column(
+                    controls=[
+                        ft.Text(value=page.t('error') if 'error' in page.trad.get(page.launcher.config.get('language'), {}) else 'Error', color=ft.Colors.WHITE, size=24),
+                        ft.Text(value=str(ex), color=ft.Colors.WHITE70, selectable=True, size=14),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.START
+                )
+            )
+        page.update()

@@ -49,8 +49,9 @@ class Modrinth:
     async def go_mod_description(self, e):
         page = self.page
         datos = None
-        async with ModrinthAPI(page) as modrinth:
-            datos = await modrinth.get_mod_description(e.control.data)
+        # ModrinthAPI no implementa context manager asíncrono; usar instancia directa
+        modrinth = ModrinthAPI(page)
+        datos = await modrinth.get_mod_description(e.control.data)
             
         current_mod = page.temp_config_modrinth['list_mods_cache'].index(e.control.data)
         have_back_mod = True
@@ -217,13 +218,23 @@ class Modrinth:
         
         limite = page.temp_config_modrinth['limit_search_mods']
         mods = []
-        async with ModrinthAPI(page) as modrinth:
-            mods = await modrinth.search_mod_modrinth(
-                query=query,
-                limit=limite,
-                offset=page.temp_config_modrinth['offset'],
-                loader=self.dropdown_loaders_list.value
-            )
+        modrinth = ModrinthAPI(page)
+        projects, _total = await modrinth.search_projects(
+            project_type='mod',
+            query=query,
+            limit=limite,
+            offset=page.temp_config_modrinth['offset'],
+            loader=self.dropdown_loaders_list.value
+        )
+        mods = [
+            {
+                "icon": p.icon,
+                "name": p.name,
+                "description": p.description,
+                "slug": p.slug,
+            }
+            for p in projects
+        ]
 
         # Crear los resultados
         self.content_results_modrinth.content.controls = [

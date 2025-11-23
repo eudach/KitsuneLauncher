@@ -170,6 +170,13 @@ class Settings:
         page:ft.Page = self.page
         page.global_vars["current_section"] = 'settings'
         page.content_menu.alignment= ft.alignment.top_left
+        # Placeholder inmediato para no quedar en loading global
+        page.content_menu.content = ft.Column(
+            controls=[ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[ft.ProgressRing(), ft.Text("Cargando configuración...")])],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        page.update()
             
         self.text_delete_all = ft.Text(
             value=page.t('delete_all_'),
@@ -268,19 +275,26 @@ class Settings:
         )
         
         
-        self.list_colors = page.launcher.config.get("last_colors")
-        self.row_witha_last_colors = ft.Row(
-            controls=[
-                ft.Container(
-                    data=cont,
-                    width=25, height=25,
-                    bgcolor = self.list_colors[cont-2],
-                    border_radius=5,
-                    ink=True,
-                    on_click=self.load_last_colors
-                )
-            for cont in range(2,8)], alignment=ft.MainAxisAlignment.CENTER
-        )
+        self.list_colors = page.launcher.config.get("last_colors") or []
+        # Asegurar al menos 6 colores
+        while len(self.list_colors) < 6:
+            self.list_colors.append(page.global_vars["primary_color"])
+        try:
+            self.row_witha_last_colors = ft.Row(
+                controls=[
+                    ft.Container(
+                        data=cont,
+                        width=25, height=25,
+                        bgcolor = self.list_colors[cont-2],
+                        border_radius=5,
+                        ink=True,
+                        on_click=self.load_last_colors
+                    )
+                for cont in range(2,8)], alignment=ft.MainAxisAlignment.CENTER
+            )
+        except Exception as ex:
+            page.logger.error(f"Error construyendo paleta de colores: {ex}")
+            self.row_witha_last_colors = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         
         self.column_java_recomendations = ft.Column(
             controls=[
@@ -361,7 +375,8 @@ class Settings:
                 ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.END
             )
         
-        page.content_menu.content= ft.ResponsiveRow(columns=14,
+        try:
+            page.content_menu.content= ft.ResponsiveRow(columns=14,
             spacing=5, run_spacing=5,
             controls=[
                 ft.Column(controls=
@@ -459,5 +474,20 @@ class Settings:
                     bgcolor=ft.Colors.WHITE10, 
                 )
             ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START
-        )
+            )
+        except Exception as ex:
+            page.logger.error(f"Error final construyendo Settings: {ex}")
+            page.content_menu.content = ft.Container(
+                bgcolor=ft.Colors.RED_900,
+                padding=20,
+                border_radius=10,
+                content=ft.Column(
+                    controls=[
+                        ft.Text(value="Error cargando Settings", color=ft.Colors.WHITE, size=24),
+                        ft.Text(value=str(ex), color=ft.Colors.WHITE70, selectable=True, size=14),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.START
+                )
+            )
         await asyncio.sleep(0)
