@@ -148,6 +148,13 @@ async def Pagina(page: ft.Page):
                     page.update()
             if e.data == "close":
                 page.win.close_windows()
+                # Cerrar sesión ModrinthAPI para evitar warnings de aiohttp
+                try:
+                    if hasattr(page, "api"):
+                        page.run_task(page.api.close)
+                except Exception as ex:
+                    page.logger.warning(f"Error cerrando sesión ModrinthAPI: {ex}")
+
         page.window.on_event = on_window_event
         page.api = ModrinthAPI(page)
         await page.api.start()

@@ -1,4 +1,3 @@
-
 import asyncio
 import re
 
@@ -75,9 +74,17 @@ class KitsuneLauncher:
         
     def open_minecraft_logs(self, type:str):
         # arg type: latest.log [ latest.log or debug.log]
-        ruta = f"{self.minecraft_path}//logs//{type}"
+        from sys import platform as _plat
+        log_path = Path(self.minecraft_path) / "logs" / type
         try:
-            os.startfile(ruta)
+            if not log_path.exists():
+                return False
+            if _plat.startswith("win"):
+                os.startfile(str(log_path))
+            elif _plat == "darwin" or _plat.startswith("mac"):
+                subprocess.run(["open", str(log_path)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(log_path)], check=False)
             return True
         except Exception:
             return False
@@ -364,6 +371,59 @@ class KitsuneLauncher:
             '--userType'
         }
         return [x for x in cmd if x not in filtros]
+
+    def __detectar_version_java(self, java_path: str) -> int:
+        """Ejecuta '<java> -version' y devuelve la versión mayor (8, 11, 17, 21...)."""
+        try:
+            if not java_path or not Path(java_path).exists():
+                return -1
+            import re
+            p = subprocess.run([java_path, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            out = (p.stdout or "") + (p.stderr or "")
+            m = re.search(r'version\s+"(?:(?:1\.)?(?P<maj1>\d+))', out)
+            if m and m.group("maj1"):
+                maj = int(m.group("maj1"))
+                return 8 if maj == 1 else maj
+        except Exception:
+            pass
+        return -1
+
+    def __sanear_jvm_args(self, args, java_major: int, ram_gb: str) -> list:
+        """Limpia o construye JVM args compatibles con la versión de Java y la RAM configurada."""
+        safe = []
+        seen = set()
+
+        def add(a: str):
+            if not a:
+                return
+            a = a.strip()
+            if not a or a in seen:
+                return
+            seen.add(a)
+            safe.append(a)
+
+        base = args or []
+
+        # Si no hay args, añadir memoria base según config
+        if not base:
+            add(f"-Xmx{ram_gb}G")
+            add(f"-Xms{ram_gb}G")
+
+        for a in base:
+            if not a:
+                continue
+            # Quitar flag no soportado en Java < 21
+            if a.startswith("--enable-native-access") and (java_major < 21):
+                continue
+            add(a)
+
+        # Asegurar flags de memoria si faltan
+        if not any(x.startswith("-Xmx") for x in safe):
+            add(f"-Xmx{ram_gb}G")
+        if not any(x.startswith("-Xms") for x in safe):
+            add(f"-Xms{ram_gb}G")
+
+        return safe
     
     
     def start_minecraft(self):
@@ -378,21 +438,36 @@ class KitsuneLauncher:
         minecraft_path = self.minecraft_path
         version = self.last_played_version[0]
         jvm_args = self.config.get("jvm_args")
+        ram = str(self.config.get("ram") or "4")
+
+        # Detectar versión de Java y sanear args para evitar errores de VM
+        java_path = self.java_path
+        java_major = self.__detectar_version_java(java_path)
+        safe_jvm_args = self.__sanear_jvm_args(jvm_args, java_major, ram)
+
+        try:
+            page.logger.info(f"Java path: {java_path}")
+            page.logger.info(f"Java major: {java_major}")
+            page.logger.info(f"JVM args: {safe_jvm_args}")
+        except Exception:
+            pass
                     
         def __ejecutar_minecraft(comando):
             try:
-                flags = subprocess.CREATE_NO_WINDOW | subprocess.HIGH_PRIORITY_CLASS
-                proceso = subprocess.Popen(
-                    comando,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    creationflags=flags,
-                    cwd=minecraft_path,
-                    encoding="utf-8",   # Fuerza UTF-8
-                    errors="replace"
-                )
+                import sys
+                popen_kwargs = {
+                    "stdout": subprocess.PIPE,
+                    "stderr": subprocess.STDOUT,
+                    "text": True,
+                    "bufsize": 1,
+                    "cwd": minecraft_path,
+                    "encoding": "utf-8",  # Fuerza UTF-8
+                    "errors": "replace"
+                }
+                # Solo usar flags especiales en Windows; en macOS/Linux causarían AttributeError
+                if sys.platform.startswith("win"):
+                    popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.HIGH_PRIORITY_CLASS
+                proceso = subprocess.Popen(comando, **popen_kwargs)
             except Exception as e:
                 with open(f"{self.minecraft_path}/error.log", "w", encoding="utf-8") as f:
                     f.write(str(e))
@@ -423,12 +498,13 @@ class KitsuneLauncher:
             'uuid': uuid,
             'demo': False,
             'token': '',
-            "executablePath": self.java_path,
-            "jvmArguments": jvm_args,
+            "executablePath": java_path,
+            "jvmArguments": safe_jvm_args,
             "launcherName": "Kitsune",
             "launcherVersion": "0.1",
             "gameDirectory": str(minecraft_path),
-            "nativesDirectory": str(minecraft_path)
+            # Deja que minecraft_launcher_lib gestione el directorio de natives
+            # no forces "nativesDirectory" here
         }
 
         # Generar comando
@@ -438,4 +514,4 @@ class KitsuneLauncher:
         
         # Lanzar Minecraft en un hilo para capturar la salida sin bloquear la app
         threading.Thread(target=__ejecutar_minecraft, args=(minecraft_command,), daemon=True).start()
-        
+

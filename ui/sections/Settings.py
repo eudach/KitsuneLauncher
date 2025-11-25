@@ -5,6 +5,7 @@ from ui.components.dropdown import DropdownLenguage
 from ui.components.color_picker import ColorPicker
 
 from core.utils import generar_degradado, alerta, TYPES_COLORS
+from core.settings import find_java
 
 from ui.components.input import InputJavaPath, InputMinecraftPath
 from ui.components.slider import SliderOpacity, SliderRam
@@ -346,8 +347,6 @@ class Settings:
             self.page.logger.info("Java path establecido correctamente (pendiente de guardar definitivo si necesario).")
         else:
             self.page.logger.warning("La ruta seleccionada no contiene ejecutable Java válido.")
-        # Validar ejecutable
-        page.run_task(self.validate_java_path)
         
     async def filepicker_select_minecraft_path(self, e:ft.FilePickerResultEvent):
         page = self.page
@@ -388,40 +387,9 @@ class Settings:
             )
         else:
             self.filepicker_javaw.get_directory_path(
-                dialog_title=self.page.t('select_javaw') + " JAVA_HOME"
+                dialog_title=self.page.t(find_java())
             )
 
-    async def validate_java_path(self):
-        """Ejecuta 'java -version' sobre la ruta seleccionada y muestra resultado en toast."""
-        page = self.page
-        from pathlib import Path
-        import subprocess, shlex, sys
-        from ui.components import toast
-        exe_path = self.input_java_path.value
-        if not exe_path:
-            return
-        p = Path(exe_path)
-        if p.is_dir():
-            # Intentar bin/java dentro
-            potential = p / 'bin' / ('java.exe' if sys.platform.startswith('win') else 'java')
-            if potential.exists():
-                p = potential
-        if not p.exists():
-            page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('file_not_found'), font_family="liberation"), toast_type=toast.ToastType.ERROR), duration=3)
-            return
-        cmd = [str(p), '-version']
-        try:
-            proc = await asyncio.to_thread(lambda: subprocess.run(cmd, capture_output=True, text=True))
-            output = proc.stderr or proc.stdout
-            if proc.returncode == 0 and 'version' in output.lower():
-                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_found'), font_family="liberation"), toast_type=toast.ToastType.SUCCESS), duration=3)
-                page.logger.info(f"Java válido detectado: {output.splitlines()[0]}")
-            else:
-                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_invalid'), font_family="liberation"), toast_type=toast.ToastType.ERROR), duration=4)
-                page.logger.warning(f"Java inválido o error al ejecutar: {output}")
-        except Exception as ex:
-            page.toaster.show_toast(toast.Toast(content=ft.Text(value=f"Java error: {ex}", font_family="liberation"), toast_type=toast.ToastType.ERROR), duration=4)
-            page.logger.error(f"Error validando Java: {ex}")
 
     async def load(self):
         page:ft.Page = self.page

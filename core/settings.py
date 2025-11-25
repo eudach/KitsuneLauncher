@@ -106,7 +106,8 @@ class ConfigManager:
             "last_version_played": [None, None],
             "ram": "4",
             "premium_mode": False,
-            "jvm_args": ["-Xmx4G", "-Xms4G", "--enable-native-access=ALL-UNNAMED"],
+            # Dejar vacío por defecto; se generará en runtime en función de la versión de Java
+            "jvm_args": [],
             "minecraft_path": mc_path,
             "app_background": True,
             "language": "en",
@@ -135,12 +136,38 @@ class ConfigManager:
             return launcher_mc_path
         return launcher_mc_path
 
+    def _java_major(self) -> int:
+        """Detecta la versión mayor de Java desde la ruta configurada."""
+        try:
+            jp = self.config.get("java_path")
+            if not jp or not Path(jp).exists():
+                return -1
+            import subprocess, re
+            completed = subprocess.run([jp, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            out = (completed.stdout or "") + (completed.stderr or "")
+            # version "1.8.0_382" -> 8 ; version "21.0.2" -> 21
+            m = re.search(r'version\s+"(?:(?:1\.)?(?P<maj1>\d+))', out)
+            if m and m.group("maj1"):
+                maj = int(m.group("maj1"))
+                return 8 if maj == 1 else maj
+        except Exception:
+            pass
+        return -1
+
     def set_jvm_args(self):
-        self.config["jvm_args"] = [
-            f"-Xmx{self.config['ram']}G",
-            f"-Xms{self.config['ram']}G",
-            "--enable-native-access=ALL-UNNAMED"
+        """Actualiza los JVM args según la RAM y capacidades de la versión de Java."""
+        ram_val = str(self.config.get('ram') or "4")
+        args = [
+            f"-Xmx{ram_val}G",
+            f"-Xms{ram_val}G",
         ]
+        try:
+            if self._java_major() >= 21:
+                args.append("--enable-native-access=ALL-UNNAMED")
+        except Exception:
+            # Si falla la detección, simplemente no añadimos el flag opcional
+            pass
+        self.config["jvm_args"] = args
 
     def load(self) -> dict:
         if self.config_path.exists():
