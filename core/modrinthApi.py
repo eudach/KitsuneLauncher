@@ -83,8 +83,14 @@ class ModrinthAPI:
         except (json.JSONDecodeError, aiohttp.ContentTypeError):
             return {}
 
+    async def _ensure_session(self):
+        """Garantiza que exista una sesión activa antes de realizar requests."""
+        if not self.session or self.session.closed:
+            await self.start()
+
     async def _make_request(self, url: str, **kwargs) -> Dict[str, Any]:
         try:
+            await self._ensure_session()
             async with self.session.get(url, **kwargs) as response:
                 return await self._handle_response(response)
         except (ClientError, asyncio.TimeoutError):
@@ -312,3 +318,27 @@ class ModrinthAPI:
             )
             for slug, info in results
         }
+
+    def __del__(self):
+        """Intento de limpieza automática para evitar sesiones sin cerrar.
+
+        Nota: Los destructores en Python no garantizan ejecución en todos los casos,
+        pero esto cubre la salida normal y Ctrl+C donde el objeto se recolecta.
+        Si el loop está activo, se programa una tarea; si no, se crea un loop temporal.
+        """
+        session = getattr(self, "session", None)
+        if not session or session.closed:
+            return
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Programar cierre asíncrono sin bloquear
+                loop.create_task(session.close())
+            else:
+                loop.run_until_complete(session.close())
+        except Exception:
+            # Fallback: intentar con asyncio.run si posible
+            try:
+                asyncio.run(session.close())
+            except Exception:
+                pass

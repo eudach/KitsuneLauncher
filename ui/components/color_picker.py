@@ -167,11 +167,12 @@ class HueSlider(ft.GestureDetector):
 
 
 class ColorPicker(ft.Container):
-    def __init__(self, color="#000000", on_color_select=None, width=220, height=220, **kwargs):
+    def __init__(self, color="#000000", on_color_select=None, on_change=None, width=220, height=220, **kwargs):
         super().__init__(**kwargs)
         self.color = color
         self.current_color = color
         self._on_color_select = on_color_select
+        self.on_change = on_change  # callback para cambios en tiempo real
         self.color_display_ref = ft.Ref[ft.Container]()
         self.color_text_ref = ft.Ref[ft.Text]()
         self.hue_slider = HueSlider(
@@ -269,6 +270,11 @@ class ColorPicker(ft.Container):
 
         self.set_selector(x, y)
         self.current_color = color
+        if callable(self.on_change):
+            try:
+                self.on_change(self.current_color)
+            except Exception:
+                pass
 
     def set_selector(self, x, y):
         self.selector_circle.left = x - self.selector_circle.width / 2
@@ -284,6 +290,11 @@ class ColorPicker(ft.Container):
             self.color_text_ref.current.update()
 
         self.update()
+        if callable(self.on_change):
+            try:
+                self.on_change(self.current_color)
+            except Exception:
+                pass
 
     def _get_xy(self, e):
         try:

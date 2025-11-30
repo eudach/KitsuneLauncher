@@ -2,35 +2,112 @@ from pathlib import Path
 import json
 import os
 from typing import Any
-from core.utils import random_hex_color
+from core.utils import random_hex_color, return_appdata
+import shutil
 
-def default_java_path():
-    base = Path("C:/Program Files/Java")
-    if not base.exists():
+def find_java() -> str | None:
+    """Intenta localizar un ejecutable de Java de forma robusta.
+
+    Estrategia:
+    1. Variables de entorno (JAVA_HOME/JDK_HOME) con soporte para macOS "Contents/Home".
+    2. Búsqueda en rutas conocidas según el sistema operativo.
+    3. Detección rápida vía PATH (shutil.which).
+    4. Escaneo recursivo superficial (hasta 3 niveles) en rutas conocidas buscando bin/java*.
+    """
+
+    java_execs = ["java", "java.exe", "javaw.exe"]
+
+    def _candidate_from_home(home: str) -> str | None:
+        home_p = Path(home)
+        # Añadir variante macOS si el usuario exportó JAVA_HOME apuntando a la raíz del bundle
+        mac_variants = [home_p, home_p / "Contents" / "Home"] if "darwin" in os.sys.platform else [home_p]
+        for base in mac_variants:
+            bin_dir = base / "bin"
+            if not bin_dir.exists():
+                continue
+            for exe in java_execs:
+                exe_path = bin_dir / exe
+                if exe_path.exists():
+                    return str(exe_path)
         return None
-    
-    paths = sorted(base.glob("jdk-17*"))
-    for path in reversed(paths):  # Priorizar versiones más recientes
-        exe = path / "bin" / "javaw.exe"
-        if exe.exists():
-            return str(exe)
+
+    # 1. Variables de entorno
+    for var in ("JAVA_HOME", "JDK_HOME"):
+        env_val = os.environ.get(var)
+        if env_val:
+            found = _candidate_from_home(env_val)
+            if found:
+                return found
+
+    # 2. PATH rápida (si ya está accesible)
+    for exe in ("javaw.exe" if os.name == "nt" else "java", "java.exe", "javaw.exe"):
+        path_found = shutil.which(exe)
+        if path_found:
+            return path_found
+
+    # 3. Rutas conocidas según SO
+    search_roots: list[Path] = []
+    if os.name == "nt":
+        search_roots += [
+            Path("C:/Program Files/Java"),
+            Path("C:/Program Files (x86)/Java"),
+        ]
+    else:  # POSIX
+        if "darwin" in os.sys.platform:  # macOS
+            search_roots += [Path("/Library/Java/JavaVirtualMachines")]
+        else:  # Linux / otros Unix
+            search_roots += [
+                Path("/usr/lib/jvm"),
+                Path("/usr/java"),
+                Path("/opt/java"),
+            ]
+
+    patterns = ["jdk*", "zulu*", "temurin*", "openjdk*", "java*"]
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for pattern in patterns:
+            for candidate in sorted(root.glob(pattern)):
+                # Intentar variantes estándar y macOS
+                found = _candidate_from_home(str(candidate))
+                if found:
+                    return found
+
+    # 4. Escaneo recursivo superficial (hasta 3 niveles) buscando bin/java*
+    for root in search_roots:
+        if not root.exists():
+            continue
+        depth_limit = 3
+        try:
+            for path in root.rglob('bin'):
+                # limitar profundidad para evitar explorar demasiado
+                if len(path.relative_to(root).parts) > depth_limit:
+                    continue
+                for exe in java_execs:
+                    exe_path = path / exe
+                    if exe_path.exists():
+                        return str(exe_path)
+        except Exception:
+            pass
+
     return None
 
 class ConfigManager:
     def __init__(self, page, path: str = "KitsuneLauncher/config.json", default_config: dict = None):
         self.page = page
-        self.config_path = Path(os.getenv('APPDATA')) / path
+        self.config_path = Path(return_appdata()) / path
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        mc_path = str(self.check_minecraft_path(Path(os.getenv('APPDATA')) / ".minecraft"))
+        mc_path = str(self.check_minecraft_path(Path(return_appdata()) / ".minecraft"))
         
         self.default_config = default_config or {
             "username": None,
             "uuid": None,
-            "java_path": default_java_path(),
+            "java_path": find_java(),
             "last_version_played": [None, None],
             "ram": "4",
             "premium_mode": False,
-            "jvm_args": ["-Xmx4G", "-Xms4G", "--enable-native-access=ALL-UNNAMED"],
+            # Dejar vacío por defecto; se generará en runtime en función de la versión de Java
+            "jvm_args": [],
             "minecraft_path": mc_path,
             "app_background": True,
             "language": "en",
@@ -59,12 +136,38 @@ class ConfigManager:
             return launcher_mc_path
         return launcher_mc_path
 
+    def _java_major(self) -> int:
+        """Detecta la versión mayor de Java desde la ruta configurada."""
+        try:
+            jp = self.config.get("java_path")
+            if not jp or not Path(jp).exists():
+                return -1
+            import subprocess, re
+            completed = subprocess.run([jp, "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            out = (completed.stdout or "") + (completed.stderr or "")
+            # version "1.8.0_382" -> 8 ; version "21.0.2" -> 21
+            m = re.search(r'version\s+"(?:(?:1\.)?(?P<maj1>\d+))', out)
+            if m and m.group("maj1"):
+                maj = int(m.group("maj1"))
+                return 8 if maj == 1 else maj
+        except Exception:
+            pass
+        return -1
+
     def set_jvm_args(self):
-        self.config["jvm_args"] = [
-            f"-Xmx{self.config['ram']}G",
-            f"-Xms{self.config['ram']}G",
-            "--enable-native-access=ALL-UNNAMED"
+        """Actualiza los JVM args según la RAM y capacidades de la versión de Java."""
+        ram_val = str(self.config.get('ram') or "4")
+        args = [
+            f"-Xmx{ram_val}G",
+            f"-Xms{ram_val}G",
         ]
+        try:
+            if self._java_major() >= 21:
+                args.append("--enable-native-access=ALL-UNNAMED")
+        except Exception:
+            # Si falla la detección, simplemente no añadimos el flag opcional
+            pass
+        self.config["jvm_args"] = args
 
     def load(self) -> dict:
         if self.config_path.exists():

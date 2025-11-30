@@ -5,6 +5,7 @@ from ui.components.dropdown import DropdownLenguage
 from ui.components.color_picker import ColorPicker
 
 from core.utils import generar_degradado, alerta, TYPES_COLORS
+from core.settings import find_java
 
 from ui.components.input import InputJavaPath, InputMinecraftPath
 from ui.components.slider import SliderOpacity, SliderRam
@@ -38,6 +39,7 @@ class Settings:
         light = page.launcher.config.get("light_color_schema")
         dark = page.launcher.config.get("dark_color_schema")
         page.color_init = prim
+        page.global_vars["primary_color"] = prim
         color_map = [
             ("iconbutton_wallpaper", "icon_color", prim),
             ("iconbutton_java_path", "icon_color", prim),
@@ -201,15 +203,25 @@ class Settings:
             changes_.append("Wallpaper")
         
         #COLOR PICKER
-        if page.launcher.config.get("primary_color_schema") != self.color_picker.color_displayed:
-            degrados = generar_degradado(self.color_picker.color_displayed)
-            
-            page.launcher.config.set("primary_color_schema", self.color_picker.color_displayed)
+        if page.launcher.config.get("primary_color_schema") != self.color_picker.current_color:
+            # Generar degradado a partir del color actual del picker
+            degrados = generar_degradado(self.color_picker.current_color)
+
+            page.launcher.config.set("primary_color_schema", self.color_picker.current_color)
             page.launcher.config.set("light_color_schema", degrados[1])
             page.launcher.config.set("dark_color_schema", degrados[0])
-            
+
+            # Actualizar historial de últimos colores (máx 6)
+            colorss = page.launcher.config.get("last_colors") or []
+            # Evitar duplicado consecutivo: eliminar si ya existe para reinsertar al frente
+            if self.color_picker.current_color in colorss:
+                colorss.remove(self.color_picker.current_color)
+            colorss.insert(0, self.color_picker.current_color)
+            if len(colorss) > 6:
+                colorss = colorss[:6]
+            page.launcher.config.set("last_colors", colorss)
+
             page.run_task(self.change_thema_on_time)
-            
             changes_.append("Thema")
         
         #LENGUAJE
@@ -311,11 +323,30 @@ class Settings:
         
     async def filepicker_select_bin_javaw(self, e:ft.FilePickerResultEvent):
         page = self.page
-        if e.files is None:
+        from pathlib import Path
+        # Manejar selección de archivo o directorio según plataforma
+        if e.files:
+            java_path = e.files[0].path
+        elif e.path:
+            candidate_dir = Path(e.path)
+            java_candidates = [candidate_dir / "bin" / "java", candidate_dir / "bin" / "java.exe"]
+            java_path = None
+            for cand in java_candidates:
+                if cand.exists():
+                    java_path = str(cand)
+                    break
+            if java_path is None:
+                java_path = e.path
+        else:
             return
-        
-        self.input_java_path.value = e.files[0].path
+        page.logger.info(f"Ruta de Java seleccionada: {java_path}")
+        self.input_java_path.value = java_path
         self.input_java_path.update()
+        # Aplicar inmediatamente al launcher y config para reflejo rápido
+        if self.page.launcher.set_java(java_path):
+            self.page.logger.info("Java path establecido correctamente (pendiente de guardar definitivo si necesario).")
+        else:
+            self.page.logger.warning("La ruta seleccionada no contiene ejecutable Java válido.")
         
     async def filepicker_select_minecraft_path(self, e:ft.FilePickerResultEvent):
         page = self.page
@@ -348,15 +379,29 @@ class Settings:
         )
         
     async def bttn_select_java_bin(self, e):
-        self.filepicker_javaw.pick_files(
-            f"{self.page.t('select_javaw')} javaw.exe",
-            allowed_extensions=["exe"]
-        )
+        import sys
+        if sys.platform.startswith("win"):
+            self.filepicker_javaw.pick_files(
+                f"{self.page.t('select_javaw')} javaw.exe",
+                allowed_extensions=["exe"]
+            )
+        else:
+            self.filepicker_javaw.get_directory_path(
+                dialog_title=self.page.t(find_java())
+            )
+
 
     async def load(self):
         page:ft.Page = self.page
         page.current_section = 'settings'
         page.content_menu.alignment= ft.alignment.top_left
+        # Fallbacks para atributos requeridos
+        if not hasattr(page, 'color_init'):
+            page.color_init = page.global_vars.get("primary_color") or page.launcher.config.get("primary_color_schema")
+        if not hasattr(page, 'ancho'):
+            page.ancho = page.window.width
+        if not hasattr(page, 'alto'):
+            page.alto = page.window.height
         
         self.text_save = ft.Text(
             value=page.t('save_'),
@@ -393,7 +438,7 @@ class Settings:
             inactive_thumb_color=page.launcher.config.get("light_color_schema")
         )
         self.image_wallpaper_widget = ft.Image(
-            src=page.launcher.config.get("wallpaper_launcher", page.default_wallpaper),
+            src=page.launcher.config.get("wallpaper_launcher", getattr(page, "default_wallpaper", page.global_vars.get("default_wallpaper", "imgs/wallpaper.png"))),
             width=page.ancho*0.10,
             height=page.alto*0.10,
             border_radius=10,
@@ -449,7 +494,8 @@ class Settings:
             on_click=self.show_list_wallpaper
         )
         
-        page.content_menu.content= ft.Column(
+        try:
+            page.content_menu.content= ft.Column(
             controls=[
                 
                 ft.Container(expand=9, padding=5, content=
@@ -537,3 +583,19 @@ class Settings:
                     )
             ],
         )
+        except Exception as ex:
+            # Mostrar error en la UI para evitar quedarse en loading
+            page.content_menu.content = ft.Container(
+                bgcolor=ft.Colors.RED_900,
+                padding=20,
+                border_radius=10,
+                content=ft.Column(
+                    controls=[
+                        ft.Text(value=page.t('error') if 'error' in page.trad.get(page.launcher.config.get('language'), {}) else 'Error', color=ft.Colors.WHITE, size=24),
+                        ft.Text(value=str(ex), color=ft.Colors.WHITE70, selectable=True, size=14),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.START
+                )
+            )
+        page.update()

@@ -10,9 +10,9 @@ from ui.components.button import (
     ButtonPlay, ButtonsSections, ButtonNewVersion,
     ButtonOpenLatestLog, ButtonOpenDebugLog)
 
-from ui.sections.Modrinth.Modrinth import Modrinth
+from ui.sections.Modrinth import Modrinth
 from ui.sections.Settings.Settings import Settings
-from ui.sections.Perfil.Perfil import Perfil
+from ui.sections.Perfil import Perfil
 
 from ui.resources.Fonts import BaseFonts
 
@@ -183,7 +183,7 @@ async def MainView(page: ft.Page, params: Params, basket: Basket) -> ft.View:
                 return
 
             except Exception as err:
-                page.logger.error("Error al cargar sección:", err)
+                page.logger.error(f"Error al cargar sección: {err}")
 
             finally:
                 page.global_vars["loading"] = False

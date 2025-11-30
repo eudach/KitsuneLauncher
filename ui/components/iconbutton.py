@@ -62,3 +62,21 @@ class IconButtonMcPath:
         
     def get(self):
         return self.iconbutton_mc_path
+
+class IconButtonSearchMod:
+    """IconButton para disparar búsqueda de mods en Modrinth.
+
+    Usado por `ui/sections/Modrinth.py`.
+    """
+    def __init__(self, page, on_click):
+        self.page = page
+        self.iconbutton_search_mod = ft.IconButton(
+            icon=ft.Icons.SEARCH,
+            icon_color=page.global_vars.get("primary_color", ft.Colors.WHITE),
+            padding=0,
+            hover_color=ft.Colors.BLACK12,
+            on_click=on_click
+        )
+
+    def get(self):
+        return self.iconbutton_search_mod

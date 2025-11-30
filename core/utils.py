@@ -5,6 +5,7 @@ import colorsys
 import os
 import hashlib
 import asyncio
+import sys
 
 def close_alert(e:ft.ControlEvent):
     control = e.page.overlay[-1]
@@ -62,11 +63,30 @@ TYPES_COLORS = {
     6: ["black54", "black87", "black87"],
 }
 
-def return_appdata() -> str:
+def return_appdata(app_name: str = "KitsuneLauncher") -> str:
+    """Devuelve la ruta base de datos de aplicación según el sistema operativo.
+
+    Sistemas:
+    - Windows: %APPDATA% (Roaming) si existe, fallback ~/AppData/Roaming
+    - macOS: ~/Library/Application Support
+    - Linux/Unix: $XDG_DATA_HOME si existe, fallback ~/.local/share
+
+    Se añade el nombre de la aplicación como subdirectorio y se crea si no existe.
     """
-    RETURNS APPDATA
-    """
-    return os.getenv('APPDATA')
+    home = os.path.expanduser("~")
+
+    if sys.platform.startswith("win"):
+        # Preferir APPDATA (Roaming). LOCALAPPDATA suele usarse para datos locales, pero se pidió APPDATA.
+        base = os.getenv("APPDATA") or os.path.join(home, "AppData", "Roaming")
+    elif sys.platform == "darwin":
+        base = os.path.join(home, "Library", "Application Support")
+    else:
+        # Linux / Unix (XDG). Si XDG_DATA_HOME no está definido, usar ~/.local/share
+        base = os.getenv("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
+
+    path_final = os.path.join(base, app_name) if app_name else base
+    os.makedirs(path_final, exist_ok=True)
+    return path_final
 
 def random_hex_color():
     return "#{:06x}".format(random.randint(0, 0xFFFFFF))

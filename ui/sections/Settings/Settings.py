@@ -100,14 +100,32 @@ class Settings:
     async def filepicker_select_bin_javaw(self, e:ft.FilePickerResultEvent):
         page = self.page
         try:
-            if e.files is None:
-                page.logger.debug("Selección de archivo Java cancelada")
+            from pathlib import Path
+            if e.files:
+                java_path = e.files[0].path
+            elif e.path:
+                candidate_dir = Path(e.path)
+                java_candidates = [candidate_dir / "bin" / "java", candidate_dir / "bin" / "java.exe"]
+                java_path = None
+                for cand in java_candidates:
+                    if cand.exists():
+                        java_path = str(cand)
+                        break
+                if java_path is None:
+                    java_path = e.path
+            else:
+                page.logger.debug("Selección de Java cancelada")
                 return
-            
-            java_path = e.files[0].path
+
             page.logger.info(f"Ruta de Java seleccionada: {java_path}")
             self.input_java_path.value = java_path
             self.input_java_path.update()
+            # Aplicar inmediatamente al launcher y config
+            if page.launcher.set_java(java_path):
+                page.logger.info("Java path establecido correctamente (pendiente de guardar definitivo si necesario).")
+            else:
+                page.logger.warning("La ruta seleccionada no contiene ejecutable Java válido.")
+            page.run_task(self.validate_java_path)
         except Exception as ex:
             page.logger.error(f"Error seleccionando archivo Java: {ex}")
         
@@ -152,10 +170,45 @@ class Settings:
         )
         
     async def bttn_select_java_bin(self, e):
-        self.filepicker_javaw.pick_files(
-            f"{self.page.t('select_javaw')} javaw.exe",
-            allowed_extensions=["exe"]
-        )
+        import sys
+        if sys.platform.startswith("win"):
+            self.filepicker_javaw.pick_files(
+                f"{self.page.t('select_javaw')} javaw.exe",
+                allowed_extensions=["exe"]
+            )
+        else:
+            self.filepicker_javaw.get_directory_path(
+                dialog_title=self.page.t('select_javaw') + " JAVA_HOME"
+            )
+
+    async def validate_java_path(self):
+        page = self.page
+        from pathlib import Path
+        import subprocess, sys, asyncio
+        from ui.components import toast
+        exe_path = self.input_java_path.value
+        if not exe_path:
+            return
+        p = Path(exe_path)
+        if p.is_dir():
+            pt = p / 'bin' / ('java.exe' if sys.platform.startswith('win') else 'java')
+            if pt.exists():
+                p = pt
+        if not p.exists():
+            page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('file_not_found'), font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=3)
+            return
+        try:
+            proc = await asyncio.to_thread(lambda: subprocess.run([str(p), '-version'], capture_output=True, text=True))
+            output = proc.stderr or proc.stdout
+            if proc.returncode == 0 and 'version' in output.lower():
+                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_found'), font_family=BaseFonts.texts), toast_type=toast.ToastType.SUCCESS), duration=3)
+                page.logger.info(f"Java válido detectado: {output.splitlines()[0]}")
+            else:
+                page.toaster.show_toast(toast.Toast(content=ft.Text(value=page.t('java_invalid'), font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=4)
+                page.logger.warning(f"Java inválido o error: {output}")
+        except Exception as ex:
+            page.toaster.show_toast(toast.Toast(content=ft.Text(value=f"Java error: {ex}", font_family=BaseFonts.texts), toast_type=toast.ToastType.ERROR), duration=4)
+            page.logger.error(f"Error validando Java: {ex}")
         
     async def load_last_colors(self, e):
         self.color_picker.set_color(e.control.bgcolor)
@@ -170,6 +223,13 @@ class Settings:
         page:ft.Page = self.page
         page.global_vars["current_section"] = 'settings'
         page.content_menu.alignment= ft.alignment.top_left
+        # Placeholder inmediato para no quedar en loading global
+        page.content_menu.content = ft.Column(
+            controls=[ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[ft.ProgressRing(), ft.Text("Cargando configuración...")])],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        page.update()
             
         self.text_delete_all = ft.Text(
             value=page.t('delete_all_'),
@@ -268,19 +328,26 @@ class Settings:
         )
         
         
-        self.list_colors = page.launcher.config.get("last_colors")
-        self.row_witha_last_colors = ft.Row(
-            controls=[
-                ft.Container(
-                    data=cont,
-                    width=25, height=25,
-                    bgcolor = self.list_colors[cont-2],
-                    border_radius=5,
-                    ink=True,
-                    on_click=self.load_last_colors
-                )
-            for cont in range(2,8)], alignment=ft.MainAxisAlignment.CENTER
-        )
+        self.list_colors = page.launcher.config.get("last_colors") or []
+        # Asegurar al menos 6 colores
+        while len(self.list_colors) < 6:
+            self.list_colors.append(page.global_vars["primary_color"])
+        try:
+            self.row_witha_last_colors = ft.Row(
+                controls=[
+                    ft.Container(
+                        data=cont,
+                        width=25, height=25,
+                        bgcolor = self.list_colors[cont-2],
+                        border_radius=5,
+                        ink=True,
+                        on_click=self.load_last_colors
+                    )
+                for cont in range(2,8)], alignment=ft.MainAxisAlignment.CENTER
+            )
+        except Exception as ex:
+            page.logger.error(f"Error construyendo paleta de colores: {ex}")
+            self.row_witha_last_colors = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         
         self.column_java_recomendations = ft.Column(
             controls=[
@@ -361,7 +428,8 @@ class Settings:
                 ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.END
             )
         
-        page.content_menu.content= ft.ResponsiveRow(columns=14,
+        try:
+            page.content_menu.content= ft.ResponsiveRow(columns=14,
             spacing=5, run_spacing=5,
             controls=[
                 ft.Column(controls=
@@ -459,5 +527,22 @@ class Settings:
                     bgcolor=ft.Colors.WHITE10, 
                 )
             ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START
-        )
+            )
+        except Exception as ex:
+            page.logger.error(f"Error final construyendo Settings: {ex}")
+            page.content_menu.content = ft.Container(
+                bgcolor=ft.Colors.RED_900,
+                padding=20,
+                border_radius=10,
+                content=ft.Column(
+                    controls=[
+                        ft.Text(value="Error cargando Settings", color=ft.Colors.WHITE, size=24),
+                        ft.Text(value=str(ex), color=ft.Colors.WHITE70, selectable=True, size=14),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.START
+                )
+            )
         await asyncio.sleep(0)
+
+    # Live color change removed: theme updates apply on save only.
