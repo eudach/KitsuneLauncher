@@ -41,51 +41,34 @@ class ButtonNavigationSearch:
         )
 
 class ButtonSave:
-    """Botón de guardado.
-
-    Firma flexible para compatibilidad:
-    - ButtonSave(page, on_click)
-    - ButtonSave(page, label_or_text_control, on_click)
-    """
-    def __init__(self, page, *args):
+    
+    def __init__(self, page, save_settings):
         self.page = page
-        if len(args) == 1:
-            save_fn = args[0]
-            label = page.t('save_')
-        elif len(args) == 2:
-            label_obj, save_fn = args
-            # Si es un control de texto usar su valor, si no str()
-            if hasattr(label_obj, 'value'):
-                label = str(getattr(label_obj, 'value'))
-            else:
-                label = str(label_obj)
-        else:
-            raise TypeError("ButtonSave espera (page, on_click) o (page, label, on_click)")
-
+        
         self.button_save = BaseButtonMaker(page).create_button(
-            text=label,
-            on_click=save_fn,
-            width=page.window.width * 0.12,
-            height=page.window.height * 0.07,
+            text=page.t('save_'),
+            on_click=save_settings,
+            width=page.window.width *0.12,
+            height=page.window.height*0.07,
             icon_src="iconos/save.png",
-            icon_width=20,
-            icon_height=20,
+            icon_width = 20, icon_height = 20,
             style=ft.ButtonStyle(
                 overlay_color=ft.Colors.BLACK12,
                 color={
                     ft.ControlState.DEFAULT: ft.Colors.WHITE,
                     ft.ControlState.HOVERED: ft.Colors.GREEN,
-                },
+                    },
                 side=ft.BorderSide(1, color=ft.Colors.WHITE10),
                 shape=ft.RoundedRectangleBorder(10),
                 bgcolor=ft.Colors.WHITE10,
             ),
             text_style=ft.TextStyle(
-                size=page.window.width / 60,
-                font_family=BaseFonts.buttons,
-            ),
+                size=page.window.width/60,
+                font_family=BaseFonts.buttons
+                
+            )
         )
-
+        
     def get(self):
         return self.button_save
     
@@ -125,40 +108,17 @@ class ButtonReport:
         return self.button_report
     
 class ButtonDeleteAll:
-    """Botón para eliminar todos los datos.
-
-    Firmas soportadas:
-    - ButtonDeleteAll(page)
-    - ButtonDeleteAll(page, on_click)
-    - ButtonDeleteAll(page, label_or_text_control, on_click)
-    """
-    def __init__(self, page, *args):
+    
+    def __init__(self, page):
         self.page = page
-        # Determinar label y callback
-        if len(args) == 0:
-            label = page.t('delete_all_')
-            callback = self.delte_all_data
-        elif len(args) == 1:
-            # Solo callback
-            label = page.t('delete_all_')
-            callback = args[0]
-        elif len(args) == 2:
-            label_obj, callback = args
-            if hasattr(label_obj, 'value'):
-                label = str(getattr(label_obj, 'value'))
-            else:
-                label = str(label_obj)
-        else:
-            raise TypeError("ButtonDeleteAll espera (page), (page, on_click) o (page, label, on_click)")
-
+        
         self.button_delete_all = BaseButtonMaker(page).create_button(
-            text=label,
-            width=page.window.width * 0.15,
-            height=page.window.height * 0.07,
+            text=page.t('delete_all_'),
+            width=page.window.width *0.15,
+            height=page.window.height*0.07,
             icon_src="iconos/trash.png",
-            icon_width=30,
-            icon_height=30,
-            on_click=callback,
+            icon_width = 30, icon_height = 30,
+            on_click=self.delte_all_data,
             style=ft.ButtonStyle(
                 overlay_color=ft.Colors.BLACK12,
                 color={
@@ -170,9 +130,9 @@ class ButtonDeleteAll:
                 bgcolor=ft.Colors.WHITE10,
             ),
             text_style=ft.TextStyle(
-                size=page.window.width / 60,
-                font_family=BaseFonts.buttons,
-            ),
+                size=page.window.width/60,
+                font_family=BaseFonts.buttons
+            )
         )
     
     async def clr_data_modal(self, e):
@@ -472,95 +432,6 @@ class ButtonNavigationDescription:
             shape=ft.RoundedRectangleBorder(radius=5),
             mini=True,
             data=slug_before_mod
-        )
-
-class ButtonListSearchModrinth:
-    """Botones de navegación para la lista de búsqueda de mods en Modrinth.
-
-    Implementa una interfaz compatible con el uso actual en `ui/sections/Modrinth.py`.
-    Los métodos son async para coincidir con las llamadas `await` existentes,
-    aunque internamente sólo construyen el control.
-    """
-    def __init__(self, page):
-        self.page = page
-
-    async def get_next(self, on_click) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            on_click=on_click,
-            icon=ft.Icons.NAVIGATE_NEXT,
-            bgcolor=self.page.launcher.config.get("dark_color_schema"),
-            mini=True,
-            shape=ft.RoundedRectangleBorder(radius=5),
-        )
-
-    async def get_home(self, on_click) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            on_click=on_click,
-            icon=ft.Icons.HOME,
-            mini=True,
-            bgcolor=self.page.launcher.config.get("light_color_schema"),
-            shape=ft.RoundedRectangleBorder(radius=5),
-            data="home"
-        )
-
-    async def get_back(self, on_click) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            on_click=on_click,
-            icon=ft.Icons.NAVIGATE_BEFORE,
-            bgcolor=self.page.launcher.config.get("dark_color_schema"),
-            mini=True,
-            shape=ft.RoundedRectangleBorder(radius=5),
-        )
-
-class ButtonBackPagMod:
-    def __init__(self, page, disabled: bool, slug: str, on_click):
-        self.page = page
-        self.disabled = disabled
-        self.slug = slug
-        self.on_click = on_click
-
-    def get(self) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            icon=ft.Icons.NAVIGATE_BEFORE,
-            disabled=self.disabled,
-            on_click=self.on_click,
-            bgcolor=self.page.launcher.config.get("dark_color_schema"),
-            shape=ft.RoundedRectangleBorder(radius=5),
-            mini=True,
-            data=self.slug
-        )
-
-class ButtonNextPagMod:
-    def __init__(self, page, disabled: bool, slug: str, on_click):
-        self.page = page
-        self.disabled = disabled
-        self.slug = slug
-        self.on_click = on_click
-
-    def get(self) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            icon=ft.Icons.NAVIGATE_NEXT,
-            disabled=self.disabled,
-            on_click=self.on_click,
-            bgcolor=self.page.launcher.config.get("dark_color_schema"),
-            shape=ft.RoundedRectangleBorder(radius=5),
-            mini=True,
-            data=self.slug
-        )
-
-class ButtonHomePagMod:
-    def __init__(self, page, on_click):
-        self.page = page
-        self.on_click = on_click
-
-    def get(self) -> ft.FloatingActionButton:
-        return ft.FloatingActionButton(
-            icon=ft.Icons.HOME,
-            on_click=self.on_click,
-            bgcolor=self.page.global_vars["primary_color"],
-            shape=ft.RoundedRectangleBorder(radius=5),
-            mini=True,
-            data='description'
         )
     
 class ButtonOpenBrowser:
