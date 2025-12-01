@@ -3,7 +3,6 @@ import logging
 import flet as ft 
 from core.utils import return_appdata
 from ui.resources.Fonts import BaseFonts
-import os
 
 def before_execute(before_func_name):
     """
@@ -36,11 +35,8 @@ class Logger:
         
         self.logger = logging.getLogger("Kitsune-Logger")
         self.logger.setLevel(logging.DEBUG)
-        try :
-            file_handler = logging.FileHandler(f"{return_appdata()}/KitsuneLauncher/app.log", encoding="utf-8")
-        except FileNotFoundError:
-            os.makedirs(f"{return_appdata()}/KitsuneLauncher", exist_ok=True)
-            file_handler = logging.FileHandler(f"{return_appdata()}/KitsuneLauncher/app.log", encoding="utf-8")
+        
+        file_handler = logging.FileHandler(f"{return_appdata()}/KitsuneLauncher/app.log", encoding="utf-8")
         file_handler.setFormatter(logging.Formatter("[%(asctime)s]   [%(levelname)s] -> %(message)s"))
         
         self.logger.addHandler(file_handler)
